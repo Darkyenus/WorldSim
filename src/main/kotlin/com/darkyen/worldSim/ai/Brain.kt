@@ -8,13 +8,12 @@ import com.darkyen.worldSim.ecs.AgentAttribute.*
 import com.darkyen.worldSim.ecs.get
 import com.darkyen.worldSim.util.DIRECTIONS
 import com.darkyen.worldSim.util.Vec2
-import com.darkyen.worldSim.util.forDirections
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.random.Random
 
 suspend fun AIContext.brain() {
-	if (!takeCareOfBasicNeeds(20)) {
+	if (!takeCareOfBasicNeeds(40)) {
 		// Not met, time to panic...
 		increaseAlert(10)
 		if (agent.misfire()) {

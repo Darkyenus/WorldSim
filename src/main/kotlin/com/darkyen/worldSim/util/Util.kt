@@ -17,7 +17,3 @@ inline fun GdxIntArray.forEach(op:(Int)->Unit) {
 		op(items[i])
 	}
 }
-
-fun <T> pick(seed:Int, vararg variants:T):T {
-	return variants[(seed and 0x7FFF_FFFF) % variants.size]
-}

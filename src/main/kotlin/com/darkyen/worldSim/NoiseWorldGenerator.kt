@@ -1,6 +1,7 @@
 package com.darkyen.worldSim
 
 import com.badlogic.gdx.math.MathUtils
+import com.badlogic.gdx.math.RandomXS128
 import com.darkyen.worldSim.NoiseWorldGenerator.Biome.*
 import com.darkyen.worldSim.ecs.CHUNK_SIZE
 import com.darkyen.worldSim.ecs.WORLD_SIZE
@@ -9,7 +10,8 @@ import com.darkyen.worldSim.ecs.WorldGenerator
 import com.darkyen.worldSim.ecs.tileKey
 import com.darkyen.worldSim.util.PerlinNoise
 import com.darkyen.worldSim.util.Vec2
-import com.darkyen.worldSim.util.pick
+import com.darkyen.worldSim.util.Weighted
+import com.darkyen.worldSim.util.WeightedSampler
 import kotlin.math.abs
 import kotlin.math.min
 
@@ -65,19 +67,31 @@ class NoiseWorldGenerator(seed:Long = System.currentTimeMillis()) : WorldGenerat
 		}
 	}
 
-	enum class Biome {
-		TROPICAL_RAINFOREST,
-		TROPICAL_SEASONAL_FOREST,
-		SAVANNA,
-		SUBTROPICAL_DESERT,
-		TEMPERATE_GRASSLAND,
-		COLD_DESERT,
-		WOODLAND,
-		SHRUBLAND,
-		TEMPERATE_SEASONAL_FOREST,
-		TEMPERATE_RAINFOREST,
-		BOREAL_FOREST,
-		TUNDRA
+	enum class Biome(vararg items: Weighted<Feature?>) {
+		TROPICAL_RAINFOREST(Weighted(Feature.DECIDUOUS_FRUIT_FOREST, 1f), Weighted(Feature.DECIDUOUS_FOREST, 4f), Weighted(null, 1f)),
+		TROPICAL_SEASONAL_FOREST(Weighted(Feature.DECIDUOUS_FRUIT_FOREST, 1f), Weighted(Feature.DECIDUOUS_FOREST, 4f), Weighted(null, 2f)),
+		SAVANNA(Weighted(Feature.DECIDUOUS_FOREST, 1f), Weighted(Feature.BERRY_BUSHES, 1f), Weighted(Feature.BUSHES, 4f), Weighted(null, 50f)),
+		SUBTROPICAL_DESERT(Weighted(Feature.BUSHES, 1f), Weighted(null, 100f)),
+		TEMPERATE_GRASSLAND(Weighted(Feature.DECIDUOUS_FOREST, 1f), Weighted(Feature.BUSHES, 2f), Weighted(null, 10f)),
+		COLD_DESERT(Weighted(Feature.BUSHES, 1f), Weighted(null, 30f)),
+		WOODLAND(Weighted(Feature.DECIDUOUS_FOREST, 5f), Weighted(Feature.DECIDUOUS_FRUIT_FOREST, 1f), Weighted(null, 2f)),
+		SHRUBLAND(Weighted(Feature.BERRY_BUSHES, 1f), Weighted(Feature.BUSHES, 2f), Weighted(null, 5f)),
+		TEMPERATE_SEASONAL_FOREST(Weighted(Feature.DECIDUOUS_FOREST_DEEP, 3f), Weighted(Feature.DECIDUOUS_FOREST, 3f), Weighted(Feature.DECIDUOUS_FRUIT_FOREST, 0.5f), Weighted(null, 1f)),
+		TEMPERATE_RAINFOREST(Weighted(Feature.DECIDUOUS_FOREST_DEEP, 3f), Weighted(Feature.DECIDUOUS_FOREST, 2f), Weighted(Feature.DECIDUOUS_FRUIT_FOREST, 0.8f), Weighted(null, 0.2f)),
+		BOREAL_FOREST(Weighted(Feature.CONIFEROUS_FOREST_DEEP, 5f), Weighted(Feature.CONIFEROUS_FOREST, 1f), Weighted(null, 0.1f)),
+		TUNDRA(Weighted(Feature.CONIFEROUS_FOREST_DEEP, 3f), Weighted(Feature.CONIFEROUS_FOREST, 3f), Weighted(null, 2f));
+
+		private val sampler = WeightedSampler(*items)
+
+		fun randomFeature(seed:Int):Feature? {
+			val random = RANDOM
+			random.setSeed(seed.toLong())
+			return sampler.sample(random)
+		}
+
+		private companion object {
+			val RANDOM = RandomXS128()
+		}
 	}
 
 	// Based on https://en.wikipedia.org/wiki/File:Climate_influence_on_terrestrial_biome.svg
@@ -145,20 +159,7 @@ class NoiseWorldGenerator(seed:Long = System.currentTimeMillis()) : WorldGenerat
 	}
 
 	private fun feature(seed:Int, biome:Biome):Feature? {
-		return when (biome) {
-			TROPICAL_RAINFOREST -> pick(seed, Feature.DECIDUOUS_FRUIT_FOREST, Feature.DECIDUOUS_FOREST, Feature.DECIDUOUS_FOREST, Feature.DECIDUOUS_FOREST)
-			TROPICAL_SEASONAL_FOREST -> pick(seed, Feature.DECIDUOUS_FRUIT_FOREST, Feature.DECIDUOUS_FOREST, Feature.DECIDUOUS_FOREST, Feature.DECIDUOUS_FOREST, Feature.DECIDUOUS_FOREST, null, null)
-			SAVANNA -> pick(seed, Feature.DECIDUOUS_FOREST, Feature.BERRY_BUSHES, Feature.BUSHES, Feature.BUSHES, Feature.BUSHES, Feature.BUSHES, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)
-			SUBTROPICAL_DESERT -> null
-			TEMPERATE_GRASSLAND -> pick(seed, Feature.DECIDUOUS_FOREST, Feature.BUSHES, Feature.BERRY_BUSHES, null, null, null, null, null, null, null, null)
-			COLD_DESERT -> pick(seed, Feature.BUSHES, null, null, null, null, null, null, null, null, null)
-			WOODLAND -> pick(seed, Feature.DECIDUOUS_FOREST, Feature.DECIDUOUS_FOREST, Feature.DECIDUOUS_FOREST, Feature.DECIDUOUS_FRUIT_FOREST)
-			SHRUBLAND -> pick(seed, Feature.BERRY_BUSHES, Feature.BUSHES, Feature.BUSHES, Feature.BUSHES, null, null, null, null, null, null, null, null)
-			TEMPERATE_SEASONAL_FOREST -> pick(seed, Feature.DECIDUOUS_FOREST_DEEP, Feature.DECIDUOUS_FOREST_DEEP, Feature.DECIDUOUS_FOREST_DEEP, Feature.DECIDUOUS_FOREST, Feature.DECIDUOUS_FOREST, Feature.DECIDUOUS_FOREST, Feature.DECIDUOUS_FRUIT_FOREST)
-			TEMPERATE_RAINFOREST -> pick(seed, Feature.DECIDUOUS_FOREST_DEEP, Feature.DECIDUOUS_FOREST_DEEP, Feature.DECIDUOUS_FOREST_DEEP, Feature.DECIDUOUS_FOREST, Feature.DECIDUOUS_FOREST, Feature.DECIDUOUS_FOREST, Feature.DECIDUOUS_FRUIT_FOREST, Feature.DECIDUOUS_FRUIT_FOREST)
-			BOREAL_FOREST -> pick(seed, Feature.CONIFEROUS_FOREST_DEEP, Feature.CONIFEROUS_FOREST_DEEP, Feature.CONIFEROUS_FOREST_DEEP, Feature.CONIFEROUS_FOREST_DEEP, Feature.CONIFEROUS_FOREST_DEEP, Feature.CONIFEROUS_FOREST)
-			TUNDRA -> pick(seed, Feature.CONIFEROUS_FOREST_DEEP, Feature.CONIFEROUS_FOREST_DEEP, Feature.CONIFEROUS_FOREST_DEEP, Feature.CONIFEROUS_FOREST, Feature.CONIFEROUS_FOREST, Feature.CONIFEROUS_FOREST, null, null)
-		}
+		return biome.randomFeature(seed)
 	}
 
 	override fun generateChunk(world: World, chunk: World.Chunk, chunkPos: Vec2) {
