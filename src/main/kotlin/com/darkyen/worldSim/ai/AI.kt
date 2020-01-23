@@ -10,15 +10,20 @@ import com.darkyen.worldSim.ecs.AgentActivity
 import com.darkyen.worldSim.ecs.AgentAttribute
 import com.darkyen.worldSim.ecs.AgentC
 import com.darkyen.worldSim.ecs.AgentS
+import com.darkyen.worldSim.ecs.CHUNK_SIZE_SHIFT
 import com.darkyen.worldSim.ecs.PositionC
+import com.darkyen.worldSim.ecs.World
 import com.darkyen.worldSim.ecs.get
 import com.darkyen.worldSim.ecs.set
 import com.darkyen.worldSim.util.Direction
+import com.darkyen.worldSim.util.GdxIntArray
 import com.darkyen.worldSim.util.Vec2
 import com.darkyen.worldSim.util.anyPositionNearIs
 import com.darkyen.worldSim.util.directionTo
+import com.darkyen.worldSim.util.forEach
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import java.util.*
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.ContinuationInterceptor
 import kotlin.coroutines.CoroutineContext
@@ -175,6 +180,66 @@ fun AIContext.featureAt(offset: Vec2): Feature? {
 	return agentS.world.getFeature(position.pos + offset)
 }
 
+const val AGENT_VISIBILITY_DISTANCE = 10
+
+private inline fun World.forChunksNear(pos:Vec2, distance:Int, action:(World.Chunk) -> Unit) {
+	val centerX = pos.x
+	val centerY = pos.y
+
+	val firstChunkX = (centerX - distance) shr CHUNK_SIZE_SHIFT
+	val lastChunkX = (centerX + distance) shr CHUNK_SIZE_SHIFT
+	val firstChunkY = (centerY - distance) shr CHUNK_SIZE_SHIFT
+	val lastChunkY = (centerY + distance) shr CHUNK_SIZE_SHIFT
+	for (x in firstChunkX .. lastChunkX) {
+		for (y in firstChunkY .. lastChunkY) {
+			val chunk = getChunk(Vec2(x shl CHUNK_SIZE_SHIFT, y shl CHUNK_SIZE_SHIFT)) ?: continue
+			action(chunk)
+		}
+	}
+}
+
+private inline fun AIContext.forNearbyEntities(action:(mDistance:Int, entity:Int) -> Unit) {
+	val self = entity
+	val pos = position.pos
+	val world = agentS.world
+
+	val positionC = agentS.positionC
+
+	world.forChunksNear(pos, AGENT_VISIBILITY_DISTANCE) { chunk ->
+		chunk.entities.indices.forEach { entity ->
+			if (entity == self) {
+				return@forEach
+			}
+
+			val position = positionC[entity] ?: return@forEach
+			val dist = (position.pos - pos).manhLen
+			if (dist > AGENT_VISIBILITY_DISTANCE) {
+				return@forEach
+			}
+
+			action(dist, entity)
+		}
+	}
+}
+
+/** Find the nearest person (if there is any close enough) */
+fun AIContext.findNearbyAgents():GdxIntArray {
+	val entities = GdxIntArray(true, 16)
+	val distances = GdxIntArray(true, 16)
+
+	forNearbyEntities { mDistance, entity ->
+		var i = Arrays.binarySearch(distances.items, 0, distances.size, mDistance)
+		if (i < 0) {
+			i = -(i+1)
+		}
+
+		distances.insert(i, mDistance)
+		entities.insert(i, entity)
+	}
+
+	return entities
+}
+
 suspend fun AIContext.eatFromInventory():Boolean {
 	val foodAmount = agent.inventory[Item.FOOD.ordinal]
 	if (foodAmount > 0) {
@@ -267,9 +332,29 @@ suspend fun AIContext.sleep() {
 	val duration = sleepFor * SLEEP_DURATION_MS_PER_POINT
 
 	doActivityDelay(AgentActivity.SLEEPING, duration) { realDuration ->
-		val sleepPoints = ((realDuration + (SLEEP_DURATION_MS_PER_POINT/2)) / SLEEP_DURATION_MS_PER_POINT).toInt()
+		val sleepPoints = ((realDuration + SLEEP_DURATION_MS_PER_POINT/2) / SLEEP_DURATION_MS_PER_POINT).toInt()
 		agent.attributes[AgentAttribute.SLEEP] = agent.attributes[AgentAttribute.SLEEP] + sleepPoints
 	}
+}
+
+suspend fun AIContext.talkWith(entity:Int):Boolean {
+	// TODO somehow engage the other entity into this?
+	val myPos = position.pos
+	val otherAgentC = agentS.agentC[entity] ?: return false
+	if (!otherAgentC.activity.canListen) {
+		return false
+	}
+	val otherPositionC = agentS.positionC[entity] ?: return false
+	if ((myPos - otherPositionC.pos).manhLen != 1) {
+		return false
+	}
+
+	// All checks are ok, lets talk
+	doActivityDelay(AgentActivity.TALKING, TALK_DURATION_MS_PER_POINT * 5) { realDuration ->
+		val socialPoints = ((realDuration + TALK_DURATION_MS_PER_POINT / 2) / TALK_DURATION_MS_PER_POINT).toInt()
+		agent.attributes[AgentAttribute.SOCIAL] = agent.attributes[AgentAttribute.SOCIAL] + socialPoints
+	}
+	return true
 }
 
 const val MAX_LOOK_DISTANCE = 4
@@ -281,6 +366,7 @@ const val FOOD_EAT_TIME_MS = 5000L
 const val DRINK_DURATION_MS = 3000L
 const val ENVIRONMENT_DRINK_DURATION_MS = 5000L
 const val SLEEP_DURATION_MS_PER_POINT = 1800L
+const val TALK_DURATION_MS_PER_POINT = 1000L
 
 const val GATHERING_DURATION_MS = 5000L
 const val HUNTING_DURATION_MS = 20_000L

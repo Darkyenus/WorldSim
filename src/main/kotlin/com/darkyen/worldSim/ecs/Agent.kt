@@ -53,16 +53,17 @@ class AgentC(val brain:AIBrain, val genderMale:Boolean) : Component {
 	}
 }
 
-enum class AgentActivity(val sprite:Int) {
-	IDLE(-1),
+enum class AgentActivity(val sprite:Int, val canListen:Boolean = false) {
+	IDLE(-1, canListen = true),
 	WALKING(-1),
-	DRINKING(86),
-	EATING(87),
+	DRINKING(86, canListen = true),
+	EATING(87, canListen = true),
 	SLEEPING(88),
-	GATHERING_MUSHROOMS(89),
-	GATHERING_FRUIT(90),
+	GATHERING_MUSHROOMS(89, canListen = true),
+	GATHERING_FRUIT(90, canListen = true),
 	HUNTING(91),
 	PANICKING(92),
+	TALKING(93, canListen = true),
 }
 
 enum class AgentAttribute(

@@ -38,6 +38,22 @@ fun AtlasRegion.render(batch: Batch, x: Float, y: Float, w: Float, h: Float) {
 			w * xScl, h * yScl)
 }
 
+fun AtlasRegion.render(batch: Batch, x: Float, y: Float, w: Float, h: Float, rotationDeg:Float) {
+	val originalWidthInv = 1f / originalWidth
+	val originalHeightInv = 1f / originalHeight
+	val xScl = packedWidth * originalWidthInv
+	val yScl = packedHeight * originalHeightInv
+	val width = w * xScl
+	val height = h * yScl
+
+	batch.draw(this,
+			x + offsetX * w * originalWidthInv,
+			y + offsetY * h * originalHeightInv,
+			width * 0.5f, height * 0.5f,
+			width, height,
+			1f, 1f, rotationDeg)
+}
+
 private val RENDER_TILE_VERTICES = FloatArray(4*5).apply {
 	this[2] = WHITE_BITS
 	this[7] = WHITE_BITS

@@ -1,5 +1,6 @@
 package com.darkyen.worldSim.ecs
 
+import com.darkyen.worldSim.util.Vec2
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 

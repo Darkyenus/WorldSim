@@ -8,6 +8,7 @@ import com.darkyen.worldSim.ecs.AgentAttribute.*
 import com.darkyen.worldSim.ecs.get
 import com.darkyen.worldSim.util.DIRECTIONS
 import com.darkyen.worldSim.util.Vec2
+import com.darkyen.worldSim.util.find
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.random.Random
@@ -177,8 +178,28 @@ private suspend fun AIContext.seekSleep():Boolean {
 }
 
 private suspend fun AIContext.seekSocial():Boolean {
-	// TODO(jp): Implement
-	return false
+	val nearbyEntities = findNearbyAgents()
+	if (nearbyEntities.size == 0) {
+		// Nobody is nearby
+		return false
+	}
+
+	// Pick someone that is not doing anything important
+	val agentC = agentS.agentC
+	val idleNearbyEntity = nearbyEntities.find { entity ->
+		agentC[entity].activity.canListen
+	}
+
+	if (idleNearbyEntity == -1) {
+		return false
+	}
+
+	val positionC = agentS.positionC[idleNearbyEntity] ?: return false
+	if (!walkTo(positionC.pos, true)) {
+		return false
+	}
+
+	return talkWith(idleNearbyEntity)
 }
 
 private suspend fun AIContext.panic() {

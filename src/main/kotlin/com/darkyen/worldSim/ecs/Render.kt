@@ -205,16 +205,22 @@ class RenderS(var pixelsPerUnit: Int = 0) : EntitySystem(COMPONENT_DOMAIN.family
 					val position = position[entity]
 					val pos = position.getPosition(posTmp)
 					if (!frustum.contains(pos)) return@forEach //Frustum culling
-					val render = render[entity]
+					val sprite = WorldSim.sprites[render[entity].sprite]
 
-					WorldSim.sprites[render.sprite].render(b, pos.x, pos.y, 1f, 1f)
+					val activity = agent[entity]?.activity ?: AgentActivity.IDLE
+
+					if (activity == AgentActivity.SLEEPING) {
+						val rotation = if ((entity and 1) == 1) 90f else -90f
+						sprite.render(b, pos.x, pos.y, 1f, 1f, rotation)
+					} else {
+						sprite.render(b, pos.x, pos.y, 1f, 1f)
+					}
+
 
 					// Render activity info, if available
-					agent[entity]?.let {
-						val spriteId = it.activity.sprite
-						if (spriteId != -1) {
-							WorldSim.sprites[spriteId].render(b, pos.x, pos.y, 1f, 1f)
-						}
+					val spriteId = activity.sprite
+					if (spriteId != -1) {
+						WorldSim.sprites[spriteId].render(b, pos.x, pos.y, 1f, 1f)
 					}
 				}
 			}

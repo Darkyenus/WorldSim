@@ -18,7 +18,7 @@ import com.github.antag99.retinazer.EngineService
 import com.github.antag99.retinazer.EntitySet
 import com.github.antag99.retinazer.Wire
 
-private const val CHUNK_SIZE_SHIFT = 5
+const val CHUNK_SIZE_SHIFT = 5
 const val CHUNK_SIZE = 1 shl CHUNK_SIZE_SHIFT
 private const val CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE
 private const val CHUNK_SIZE_MASK = CHUNK_SIZE - 1

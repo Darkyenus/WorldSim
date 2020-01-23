@@ -23,11 +23,11 @@ class WeightedSampler<T>(vararg items:Weighted<T>) {
 		var smallI = 0
 		var largeI = 0
 
-		for ((index, item) in items.withIndex()) {
-			if (item.weight < 1f) {
-				small[smallI++] = index
+		for (i in items.indices) {
+			if (workingProbabilities[i] < 1f) {
+				small[smallI++] = i
 			} else {
-				large[largeI++] = index
+				large[largeI++] = i
 			}
 		}
 
