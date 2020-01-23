@@ -2,11 +2,12 @@ package com.darkyen.worldSim.ecs
 
 import com.badlogic.gdx.math.Vector2
 import com.darkyen.worldSim.util.Direction
+import com.darkyen.worldSim.util.Vec2
 import com.darkyen.worldSim.util.forEach
 import com.github.antag99.retinazer.Component
 import com.github.antag99.retinazer.Mapper
 import com.github.antag99.retinazer.Wire
-import com.github.antag99.retinazer.systems.FamilyPresenceWatcherSystem
+import com.github.antag99.retinazer.systems.FamilyWatcherSystem
 import kotlin.math.min
 
 /** Position component. */
@@ -16,9 +17,6 @@ class PositionC : Component {
 	var progress = 0f
 	/** Movement speed in tiles per second. */
 	var speed = 1f
-
-	/** Movement that should be done after this one is completed  */
-	var nextMovement: Direction = Direction.NONE
 
 	fun getX(): Float {
 		return pos.x + movement.deltaX * progress
@@ -34,17 +32,19 @@ class PositionC : Component {
 }
 
 /** Position system. Moves [PositionC]omponents and updates [World.Chunk.entities]. */
-class PositionS : FamilyPresenceWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(PositionC::class.java)) {
+class PositionS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(PositionC::class.java)) {
 
 	@Wire
 	private lateinit var positionMapper: Mapper<PositionC>
+	@Wire
+	private lateinit var agentMapper: Mapper<AgentC>
 	@Wire
 	private lateinit var world: World
 
 	override fun update(delta: Float) {
 		super.update(delta)
 		val world = world
-		familyEntities.indices.forEach { entity ->
+		entities.indices.forEach { entity ->
 			val position = positionMapper[entity]!!
 			val movement = position.movement
 			if (movement == Direction.NONE) {
@@ -60,8 +60,9 @@ class PositionS : FamilyPresenceWatcherSystem.Single(COMPONENT_DOMAIN.familyWith
 			val oldChunkKey = position.pos.chunkKey
 			position.pos += movement.vec
 			position.progress = min(newProgress - 1f, 1f)
-			position.movement = position.nextMovement
-			position.nextMovement = Direction.NONE
+			position.movement = Direction.NONE
+			agentMapper[entity]?.continueAfter(AgentC.Action.MOVEMENT)
+
 			val newChunkKey = position.pos.chunkKey
 
 			if (oldChunkKey != newChunkKey) {

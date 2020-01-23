@@ -11,7 +11,7 @@ import com.github.antag99.retinazer.systems.EntityProcessorSystem
  */
 class CameraTrackerC(var radiusVisibleAround:Float = 1f) : Component
 
-class CameraTrackerS : EntityProcessorSystem.Single(COMPONENT_DOMAIN.familyWith(PositionC::class.java, CameraTrackerC::class.java)) {
+class CameraTrackerS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(PositionC::class.java, CameraTrackerC::class.java)) {
 	@Wire
 	private lateinit var positionMapper: Mapper<PositionC>
 	@Wire

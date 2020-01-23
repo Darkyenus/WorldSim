@@ -6,7 +6,7 @@ import com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion
 import com.badlogic.gdx.graphics.g2d.TextureRegion
 
 /** How many pixels in each direction does one tile have */
-const val TILE_PIXELS = 24
+const val TILE_PIXELS = 16
 
 /** Bits of a white color. */
 val WHITE_BITS = Color.WHITE.toFloatBits()
@@ -14,7 +14,7 @@ val WHITE_BITS = Color.WHITE.toFloatBits()
 /**
  * Draw [AtlasRegion] horizontally centered.
  */
-fun AtlasRegion.drawCentered(batch: Batch, centerX: Float, bottomY: Float, scale: Float, flipX: Boolean) {
+fun AtlasRegion.renderCentered(batch: Batch, centerX: Float, bottomY: Float, scale: Float, flipX: Boolean) {
 	val invTilePixels = scale / TILE_PIXELS
 	var w = this.packedWidth * invTilePixels
 	val h = this.packedHeight * invTilePixels

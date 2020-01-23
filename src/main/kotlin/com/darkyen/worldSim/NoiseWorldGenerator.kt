@@ -3,12 +3,12 @@ package com.darkyen.worldSim
 import com.badlogic.gdx.math.MathUtils
 import com.darkyen.worldSim.NoiseWorldGenerator.Biome.*
 import com.darkyen.worldSim.ecs.CHUNK_SIZE
-import com.darkyen.worldSim.ecs.Vec2
 import com.darkyen.worldSim.ecs.WORLD_SIZE
 import com.darkyen.worldSim.ecs.World
 import com.darkyen.worldSim.ecs.WorldGenerator
 import com.darkyen.worldSim.ecs.tileKey
 import com.darkyen.worldSim.util.PerlinNoise
+import com.darkyen.worldSim.util.Vec2
 import com.darkyen.worldSim.util.pick
 import kotlin.math.abs
 import kotlin.math.min
@@ -191,7 +191,7 @@ class NoiseWorldGenerator(seed:Long = System.currentTimeMillis()) : WorldGenerat
 	}
 
 	private fun hash(x: Float, y:Float): Int {
-		var h = (x.toRawBits().toLong() shl 32) or (y.toRawBits().toLong() and 0xFFFFFFFFL)
+		var h = (java.lang.Float.floatToRawIntBits(x).toLong() shl 32) or (java.lang.Float.floatToRawIntBits(y).toLong() and 0xFFFFFFFFL)
 		h = h xor (h ushr 33)
 		h *= -0xae502812aa7333L
 		h = h xor (h ushr 33)

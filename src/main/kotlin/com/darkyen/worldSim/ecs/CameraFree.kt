@@ -5,13 +5,13 @@ import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Vector2
 import com.darkyen.worldSim.WorldSimGame
 import com.darkyen.worldSim.input.GameInput
-import com.github.antag99.retinazer.EntitySystem
+import com.github.antag99.retinazer.EngineService
 import com.github.antag99.retinazer.Wire
 
 /**
  *
  */
-class CameraFree : EntitySystem(), WorldSimGame.InputProcessorProvider {
+class CameraFree : EngineService, WorldSimGame.InputProcessorProvider {
 
 	private val upInput = GameInput.function("Move Up", GameInput.Binding.bindKeyboard(Input.Keys.W))
 	private val downInput = GameInput.function("Move Down", GameInput.Binding.bindKeyboard(Input.Keys.S))

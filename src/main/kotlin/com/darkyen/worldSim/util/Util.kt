@@ -1,6 +1,11 @@
 package com.darkyen.worldSim.util
 
+typealias GdxByteArray = com.badlogic.gdx.utils.ByteArray
+typealias GdxShortArray = com.badlogic.gdx.utils.ShortArray
 typealias GdxIntArray = com.badlogic.gdx.utils.IntArray
+typealias GdxLongArray = com.badlogic.gdx.utils.LongArray
+typealias GdxFloatArray = com.badlogic.gdx.utils.FloatArray
+typealias GdxArray<T> = com.badlogic.gdx.utils.Array<T>
 
 /**
  * Iterate through a [GdxIntArray]

@@ -27,18 +27,22 @@ import com.darkyen.worldSim.render.renderTile
 import com.darkyen.worldSim.ui.debug.GrapherPane
 import com.darkyen.worldSim.ui.debug.GrapherPane.GraphData
 import com.darkyen.worldSim.util.Text
+import com.darkyen.worldSim.util.Vec2
+import com.darkyen.worldSim.util.forEach
 import com.github.antag99.retinazer.Component
+import com.github.antag99.retinazer.EntitySystem
 import com.github.antag99.retinazer.Mapper
 import com.github.antag99.retinazer.Wire
-import com.github.antag99.retinazer.systems.EntityProcessorSystem
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
 /** This entity is rendered. */
-class RenderC(var sprite:Int) : Component
+class RenderC : Component {
+	var sprite:Int = 0
+}
 
-class RenderS(var pixelsPerUnit: Int = 0) : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(PositionC::class.java, RenderC::class.java)), WorldSimGame.UILayerProvider, WorldSimGame.InputProcessorProvider {
+class RenderS(var pixelsPerUnit: Int = 0) : EntitySystem(COMPONENT_DOMAIN.familyWith(PositionC::class.java, RenderC::class.java)), WorldSimGame.UILayerProvider, WorldSimGame.InputProcessorProvider {
 
 	private var debugDrawEnabled = false
 		set(value) {
@@ -64,9 +68,9 @@ class RenderS(var pixelsPerUnit: Int = 0) : EntityProcessorSystem(COMPONENT_DOMA
 	@Wire
 	private lateinit var world: World
 	@Wire
-	private lateinit var positionMapper: Mapper<PositionC>
+	private lateinit var position: Mapper<PositionC>
 	@Wire
-	private lateinit var renderMapper: Mapper<RenderC>
+	private lateinit var render: Mapper<RenderC>
 
 	companion object {
 		var DEBUG_DRAW_INFO: CharSequence? = null
@@ -158,7 +162,7 @@ class RenderS(var pixelsPerUnit: Int = 0) : EntityProcessorSystem(COMPONENT_DOMA
 		start.add(-OVERLAP, -OVERLAP)
 		end.add(OVERLAP, OVERLAP)
 		val frustum = frustum.set(start.x, start.y, end.x - start.x, end.y - start.y)
-		draw(batch, MathUtils.floor(start.x), MathUtils.floor(start.y), MathUtils.ceil(end.x), MathUtils.ceil(end.y), frustum)
+		draw(batch, Vec2(MathUtils.floor(start.x), MathUtils.floor(start.y)), Vec2(MathUtils.ceil(end.x), MathUtils.ceil(end.y)), frustum)
 
 		batch.end()
 		if (frameBuffer != null) {
@@ -175,65 +179,36 @@ class RenderS(var pixelsPerUnit: Int = 0) : EntityProcessorSystem(COMPONENT_DOMA
 		}
 	}
 
-	private fun draw(b: Batch, startX: Int, startY: Int, endX: Int, endY: Int, frustum: Rectangle) {
-		val w = world
+	private fun draw(b: Batch, low:Vec2, high:Vec2, frustum: Rectangle) {
+		val world = world
 
 		//Draw tiles & features
-		for (y in endY downTo startY) {
-			for (x in startX..endX) {
+		for (y in high.y downTo low.y) {
+			for (x in low.x..high.x) {
 				val xy = Vec2(x, y)
-				w.getTileSprite(xy).renderTile(b, x, y)
+				world.getTileSprite(xy).renderTile(b, x, y)
 
-				w.getFeatureSprite(xy)?.render(b, x.toFloat(), y.toFloat(), 1f, 1f)
+				world.getFeatureSprite(xy)?.render(b, x.toFloat(), y.toFloat(), 1f, 1f)
 			}
 		}
+
+		val posTmp = Vector2()
 
 		// Draw entities
-/*
-		val renderableEntities = entities
-		val renderableEntitiesMask = renderableEntities.mask
-		val renderables: com.badlogic.gdx.utils.Array<Renderable> = renderables
-		var chunkY = startY shr CHUNK_SIZE_SHIFT
-		val chunkYMax = endY shr CHUNK_SIZE_SHIFT
-		while (chunkY <= chunkYMax) {
-			var chunkX = startX shr CHUNK_SIZE_SHIFT
-			val chunkXMax = endX shr CHUNK_SIZE_SHIFT
-			while (chunkX <= chunkXMax) {
-				val chunk: WorldChunk = w.getChunk(chunkX, chunkY)
-				val chunkWorldX = (chunkX shl CHUNK_SIZE_SHIFT.toFloat().toInt()).toFloat()
-				val chunkWorldY = (chunkY shl CHUNK_SIZE_SHIFT.toFloat().toInt()).toFloat()
+		for (chunkY in high.chunkY downTo low.chunkY) {
+			for (chunkX in low.chunkX..high.chunkX) {
+				val chunkCornerPos = Vec2.ofChunkCorner(chunkX, chunkY)
+				val chunk = world.getChunk(chunkCornerPos) ?: continue
+				chunk.entities.indices.forEach { entity ->
+					val position = position[entity]
+					val pos = position.getPosition(posTmp)
+					if (!frustum.contains(pos)) return@forEach //Frustum culling
+					val render = render[entity]
 
-				run {
-					// Entities
-					val chunkEntities: IntArray = chunk.entities.getIndices()
-					val entities = chunkEntities.items
-					val entityCount = chunkEntities.size
-					for (i in 0 until entityCount) {
-						val entity = entities[i]
-						if (!renderableEntitiesMask[entity]) continue
-						val positionC = positionMapper!![entity]
-						if (!frustum.contains(positionC.getX(), positionC.getY())) continue  //Frustum culling
-						val renderable: EntityRenderable = EntityRenderable.POOL.obtain()
-						renderable.renderC = renderMapper!![entity]
-						renderable.engine = world.entityEngine
-						renderable.entity = entity
-						renderable.x = align(positionC.x)
-						renderable.y = align(positionC.y)
-						renderables.add(renderable)
-					}
+					WorldSim.sprites[render.sprite].render(b, pos.x, pos.y, 1f, 1f)
 				}
-				chunkX++
 			}
-			chunkY++
 		}
-		renderables.sort(RENDERABLE_COMPARATOR)
-		for (r in renderables) {
-			r.render(batch, time, delta)
-			r.free()
-		}
-		val rendered = renderables.size
-		renderables.clear()
-		return rendered*/
 	}
 
 	private val stepTimeData = GraphData(256, Color.RED, 0f, 0.1f, false)

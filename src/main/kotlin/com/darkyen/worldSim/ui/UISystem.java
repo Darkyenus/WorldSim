@@ -6,12 +6,12 @@ import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
-import com.github.antag99.retinazer.EntitySystem;
+import com.github.antag99.retinazer.EngineService;
 
 /**
  * @author Darkyen
  */
-public abstract class UISystem extends EntitySystem implements InputProcessor {
+public abstract class UISystem implements InputProcessor, EngineService {
 
     private final Viewport viewport;
     public final Stage root;
@@ -27,7 +27,6 @@ public abstract class UISystem extends EntitySystem implements InputProcessor {
 
     @Override
     public void initialize() {
-        super.initialize();
         createUI();
     }
 
@@ -36,7 +35,7 @@ public abstract class UISystem extends EntitySystem implements InputProcessor {
     private int lastW, lastH;
 
     @Override
-    protected void update(float delta) {
+    public void update(float delta) {
         final int w = Gdx.graphics.getWidth(), h = Gdx.graphics.getHeight();
         if(w != lastW || h != lastH){
             layout();

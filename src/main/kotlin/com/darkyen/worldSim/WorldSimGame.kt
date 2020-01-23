@@ -8,8 +8,10 @@ import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.utils.Disposable
 import com.badlogic.gdx.utils.viewport.ScreenViewport
+import com.darkyen.worldSim.ecs.AgentS
 import com.darkyen.worldSim.ecs.COMPONENT_DOMAIN
 import com.darkyen.worldSim.ecs.CameraFree
+import com.darkyen.worldSim.ecs.PathFinder
 import com.darkyen.worldSim.ecs.PositionS
 import com.darkyen.worldSim.ecs.RenderS
 import com.darkyen.worldSim.ecs.World
@@ -21,7 +23,9 @@ import com.github.antag99.retinazer.Engine
  */
 class WorldSimGame : Screen {
 	private val engine = Engine(COMPONENT_DOMAIN,
-			World(NoiseWorldGenerator()),
+			World(NoiseWorldGenerator(), EntityChunkPopulator),
+			PathFinder(),
+			AgentS(),
 			PositionS(),
 			CameraFree(),
 			RenderS()

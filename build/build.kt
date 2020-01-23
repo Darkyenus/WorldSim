@@ -5,6 +5,7 @@
 import com.darkyen.resourcepacker.PackingOperation
 import org.jline.utils.OSUtils
 import wemi.*
+import wemi.Configurations
 import wemi.boot.BuildDependency
 import wemi.boot.BuildDependencyRepository
 import wemi.boot.WemiRootFolder
@@ -24,11 +25,16 @@ val WorldSim by project {
 
 	mainClass set { "com.darkyen.worldSim.Main" }
 
-	extend(running) {
-		if (OSUtils.IS_OSX) {
-				runOptions add { "-XstartOnFirstThread" }
+	if (OSUtils.IS_OSX) {
+		runOptions add { "-XstartOnFirstThread" }
+	}
+
+	runOptions modify { options ->
+		if (options.any { it.startsWith("-agentlib:jdwp=") }) {
+			options
+		} else {
+			options + "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
 		}
-		runOptions add { "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005" }
 	}
 
 	repositories add { Jitpack }
@@ -38,6 +44,8 @@ val WorldSim by project {
 	libraryDependencies add { dependency("com.badlogicgames.gdx", "gdx-backend-lwjgl3", gdxVersion) }
 	libraryDependencies add { dependency("com.badlogicgames.gdx", "gdx-platform", gdxVersion, classifier = "natives-desktop") }
 	libraryDependencies add { dependency("com.darkyen", "retinazer", /*"retinazer-0.2.5"*/"master-SNAPSHOT") }
+	libraryDependencies add { dependency("com.badlogicgames.gdx:gdx-ai:1.8.2", exclusions = listOf(DependencyExclusion("com.badlogicgames.gdx", "gdx"))) }
+	libraryDependencies add { dependency("org.jetbrains.kotlinx", "kotlinx-coroutines-core", "1.3.3") }
 
 	val assets = (WemiRootFolder / "assets")
 

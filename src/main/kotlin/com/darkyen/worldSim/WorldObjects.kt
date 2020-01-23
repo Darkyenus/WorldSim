@@ -3,9 +3,7 @@ package com.darkyen.worldSim
 import com.darkyen.worldSim.FeatureAspect.*
 import com.darkyen.worldSim.Sprite.Connecting
 import com.darkyen.worldSim.Sprite.Simple
-import com.darkyen.worldSim.ecs.Vec2
-import com.darkyen.worldSim.ecs.World
-import com.darkyen.worldSim.util.Side
+import com.darkyen.worldSim.util.Direction
 import java.util.*
 
 /**
@@ -59,29 +57,29 @@ enum class Feature(
 	BERRY_BUSHES(Simple(36), FOOD_SOURCE_SMALL_WILD_ANIMALS, FOOD_SOURCE_FRUIT, WALK_SLOWER),
 
 	HOUSE_1(Simple(2), HOUSE_HOME) {
-		override fun connectsTo(other: Feature, ownSide: Side): Boolean = ownSide === Side.BOTTOM && other === ROAD
+		override fun connectsTo(other: Feature, ownSide: Direction): Boolean = ownSide === Direction.DOWN && other === ROAD
 	},
 	HOUSE_2(Simple(3), HOUSE_HOME) {
-		override fun connectsTo(other: Feature, ownSide: Side): Boolean = ownSide === Side.BOTTOM && other === ROAD
+		override fun connectsTo(other: Feature, ownSide: Direction): Boolean = ownSide === Direction.DOWN && other === ROAD
 	},
 	HOUSE_3(Simple(4), HOUSE_HOME) {
-		override fun connectsTo(other: Feature, ownSide: Side): Boolean = ownSide === Side.BOTTOM && other === ROAD
+		override fun connectsTo(other: Feature, ownSide: Direction): Boolean = ownSide === Direction.DOWN && other === ROAD
 	},
 	HOUSE_4(Simple(5), HOUSE_HOME) {
-		override fun connectsTo(other: Feature, ownSide: Side): Boolean = ownSide === Side.BOTTOM && other === ROAD
+		override fun connectsTo(other: Feature, ownSide: Direction): Boolean = ownSide === Direction.DOWN && other === ROAD
 	},
 	WAREHOUSE_1(Simple(6), HOUSE_WAREHOUSE) {
-		override fun connectsTo(other: Feature, ownSide: Side): Boolean = ownSide === Side.BOTTOM && other === ROAD
+		override fun connectsTo(other: Feature, ownSide: Direction): Boolean = ownSide === Direction.DOWN && other === ROAD
 	},
 	WAREHOUSE_2(Simple(8), HOUSE_WAREHOUSE) {
-		override fun connectsTo(other: Feature, ownSide: Side): Boolean = ownSide === Side.BOTTOM && other === ROAD
+		override fun connectsTo(other: Feature, ownSide: Direction): Boolean = ownSide === Direction.DOWN && other === ROAD
 	},
 	TOWN_HALL_1(Simple(7), HOUSE_TOWN_HALL) {
-		override fun connectsTo(other: Feature, ownSide: Side): Boolean = ownSide === Side.BOTTOM && other === ROAD
+		override fun connectsTo(other: Feature, ownSide: Direction): Boolean = ownSide === Direction.DOWN && other === ROAD
 	},
 	;
 
-	open fun connectsTo(other:Feature, ownSide: Side):Boolean {
+	open fun connectsTo(other:Feature, ownSide: Direction):Boolean {
 		return other === this
 	}
 
@@ -102,6 +100,13 @@ enum class FeatureAspect {
 	HOUSE_WAREHOUSE,
 	HOUSE_TOWN_HALL,
 }
+
+enum class Item {
+	FOOD,
+	WOOD;
+}
+
+val ITEMS = Item.values()
 
 sealed class Sprite {
 
