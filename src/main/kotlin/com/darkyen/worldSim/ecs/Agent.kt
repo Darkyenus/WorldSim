@@ -1,25 +1,23 @@
 package com.darkyen.worldSim.ecs
 
+import com.badlogic.gdx.math.MathUtils
 import com.darkyen.worldSim.EntityChunkPopulator
-import com.darkyen.worldSim.Feature
 import com.darkyen.worldSim.ITEMS
-import com.darkyen.worldSim.Item
-import com.darkyen.worldSim.Tile
-import com.darkyen.worldSim.TileType
 import com.darkyen.worldSim.ai.AIBrain
+import com.darkyen.worldSim.ai.AIContext
 import com.darkyen.worldSim.ai.AICoroutineManager
-import com.darkyen.worldSim.util.Direction
-import com.darkyen.worldSim.util.Vec2
-import com.darkyen.worldSim.util.directionTo
+import com.darkyen.worldSim.ecs.AgentAttribute.ALERTNESS
 import com.darkyen.worldSim.util.forEach
 import com.github.antag99.retinazer.Component
 import com.github.antag99.retinazer.Mapper
 import com.github.antag99.retinazer.Wire
 import com.github.antag99.retinazer.systems.FamilyWatcherSystem
+import com.github.antag99.retinazer.util.Bag
 import kotlin.coroutines.Continuation
-import kotlin.coroutines.coroutineContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+import kotlin.math.max
+import kotlin.random.Random
 
 /**
  *
@@ -28,60 +26,146 @@ class AgentC(val brain:AIBrain, val genderMale:Boolean) : Component {
 	val inventory = IntArray(ITEMS.size)
 	var ageYears:Int = 0
 
-	private var brainTaskContinuation: Continuation<Unit>? = null
-	private var waitingFor:Action? = null
+	val attributes = ByteArray(AGENT_ATTRIBUTES.size)
 
-	enum class Action {
-		MOVEMENT
+	var activity:AgentActivity = AgentActivity.IDLE
+
+	val isBaby:Boolean
+		get() = ageYears < MATURITY_AGE_YEAR
+
+	fun attributePercent(attribute:AgentAttribute):Float {
+		return (attributes[attribute] - attribute.min) / (attribute.max - attribute.min).toFloat()
 	}
 
-	fun continueAfter(action:Action) {
-		if (waitingFor === action) {
-			waitingFor = null
-			val continuation = brainTaskContinuation
-			brainTaskContinuation = null
-			continuation?.resume(Unit)
+	/** Check if a cognitive function should fail, due to lack of sleep, water, panic, etc. */
+	fun misfire():Boolean {
+		val health = 10 - attributes[AgentAttribute.HEALTH]
+		val food = -50 - attributes[AgentAttribute.HUNGER]
+		val water = -10 - attributes[AgentAttribute.THIRST]
+		val sleep = 20 - attributes[AgentAttribute.SLEEP]
+		val panic = 30 - (attributes[ALERTNESS] - attributes[AgentAttribute.MENTAL_STRENGTH])
+
+		val misfireChance = max(max(max(health, food), max(water, sleep)), panic)
+		if (misfireChance <= 0) {
+			return false
 		}
+		return misfireChance > Random.nextInt(100)
 	}
+}
 
-	suspend fun waitFor(action:Action) {
-		assert(waitingFor == null && brainTaskContinuation == null)
-		waitingFor = action
-		suspendCoroutine<Unit> {
-			brainTaskContinuation = it
-		}
-	}
+enum class AgentActivity(val sprite:Int) {
+	IDLE(-1),
+	WALKING(-1),
+	DRINKING(86),
+	EATING(87),
+	SLEEPING(88),
+	GATHERING_MUSHROOMS(89),
+	GATHERING_FRUIT(90),
+	HUNTING(91),
+	PANICKING(92),
+}
+
+enum class AgentAttribute(
+		/** Min value of this attribute. */
+		val min:Byte = 0,
+		/** Max value for this attribute. */
+		val max:Byte = 100) {
+	// Dynamic (needs)
+	/** Injuries, etc. */
+	HEALTH,
+	/** Hunger */
+	HUNGER(min = -100),
+	/** Thirst */
+	THIRST(min = -100),
+	/** Lack of sleep */
+	SLEEP(min=-100),
+	/** Dangerous situations increase alertness, goes down over time. */
+	ALERTNESS,
+	/** Being alone increases the need to talk with others. Affected by extroversion. */
+	SOCIAL,
+	// Other needs: clothing, shelter, family, society
+
+	// Static
+	/** How physically strong the person is */
+	STRENGTH,
+	/** How mentally strong the person is. Low mental strength leads to lower panic threshold. */
+	MENTAL_STRENGTH(min=-100),
+	/** Affects walking speed etc. */
+	AGILITY,
+	/** People with high endurance suffer less from low health and are less likely to die when deprived of basic needs. */
+	ENDURANCE,
+	/** How much extroverted (or introverted) the person is. */
+	EXTROVERSION
+}
+
+val AGENT_ATTRIBUTES = AgentAttribute.values()
+
+operator fun ByteArray.get(attr:AgentAttribute):Byte {
+	return this[attr.ordinal]
+}
+
+operator fun ByteArray.set(attr:AgentAttribute, amount:Byte) {
+	this[attr.ordinal] = MathUtils.clamp(amount.toInt(), attr.min.toInt(),  attr.max.toInt()).toByte()
+}
+
+operator fun ByteArray.set(attr:AgentAttribute, amount:Int) {
+	this[attr.ordinal] = MathUtils.clamp(amount, attr.min.toInt(),  attr.max.toInt()).toByte()
 }
 
 /** When entities reach this year, their sprite changes from child sprite to mature sprite. */
 const val MATURITY_AGE_YEAR = 16
 
+const val DAY_LENGTH_IN_REAL_SECONDS = 60f * 5f // 5 min = 1 day
+const val HOUR_LENGTH_IN_REAL_SECONDS = DAY_LENGTH_IN_REAL_SECONDS / 24f
+
 class AgentS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(PositionC::class.java, AgentC::class.java)) {
 
 	@Wire
-	private lateinit var world: World
+	lateinit var world: World
 	@Wire
-	private lateinit var positionC: Mapper<PositionC>
+	lateinit var positionC: Mapper<PositionC>
 	@Wire
-	private lateinit var agentC: Mapper<AgentC>
+	lateinit var agentC: Mapper<AgentC>
 	@Wire
-	private lateinit var renderC: Mapper<RenderC>
+	lateinit var renderC: Mapper<RenderC>
 	@Wire
-	private lateinit var pathFinder:PathFinder
+	lateinit var pathFinder:PathFinder
 
 	private val brainSurgeon = AICoroutineManager()
 
+	val currentTimeMs:Long
+		get() = brainSurgeon.currentNanoTime / 1000_000L
+
 	private var dayProgressSec = 0f
-	private val dayLengthSec = 60f * 10f // 10 min = 1 day
 	// Days elapsed
 	private var yearProgress = 0
 	private val yearLengthDays = 50
 
+	private val waitingContinuation = Bag<Continuation<Unit>>()
+
+	fun continueEntity(entity:Int) {
+		waitingContinuation.get(entity)!!.resume(Unit)
+	}
+
+	suspend fun waitEntity(entity:Int, activity:AgentActivity) {
+		val agent: AgentC = agentC[entity]
+		val oldActivity = agent.activity
+		agent.activity = activity
+		try {
+			suspendCoroutine<Unit> {
+				waitingContinuation.set(entity, it)
+			}
+		} finally {
+			agent.activity = oldActivity
+		}
+	}
+
+
 	override fun update(delta: Float) {
 		super.update(delta)
 		dayProgressSec += delta
-		yearProgress += if (dayProgressSec >= dayLengthSec) {
-			dayProgressSec -= dayLengthSec
+		yearProgress += if (dayProgressSec >= DAY_LENGTH_IN_REAL_SECONDS) {
+			dayProgressSec -= DAY_LENGTH_IN_REAL_SECONDS
 			1
 		} else 0
 		if (yearProgress >= yearLengthDays) {
@@ -107,95 +191,11 @@ class AgentS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(PositionC:
 	}
 
 	override fun insertedEntity(entity: Int, delta: Float) {
-		brainSurgeon.beginBrain(entity, this, agentC[entity]!!)
+		brainSurgeon.beginBrain(AIContext(entity, this, agentC[entity]!!, positionC[entity]!!))
 	}
 
 	override fun removedEntity(entity: Int, delta: Float) {
 		brainSurgeon.endBrain(entity)
 	}
-
-	companion object {
-
-		/** Walk single tile in the given direction.
-		 * @return whether successful */
-		suspend fun walk(direction: Direction):Boolean {
-			val aiContext = coroutineContext[AICoroutineManager.AIContext]!!
-			val entity = aiContext.entity
-			val agentS = aiContext.agentS
-			val agentC = agentS.agentC[entity]
-			val positionC = agentS.positionC[entity]
-			val moveFrom = positionC.pos
-			val moveTo = moveFrom + direction.vec
-
-			if (agentS.world.getTile(moveTo).type != TileType.LAND) {
-				return false
-			}
-
-			positionC.movement = direction
-			positionC.speed = agentS.world.getMovementSpeedMultiplier(moveFrom)
-			agentC.waitFor(AgentC.Action.MOVEMENT)
-			return true
-		}
-
-		suspend fun walkTo(targetPosition: Vec2):Boolean {
-			val aiContext = coroutineContext[AICoroutineManager.AIContext]!!
-			val entity = aiContext.entity
-			val agentS = aiContext.agentS
-			val positionC = agentS.positionC[entity]
-			var currentPos = positionC.pos
-			val path = agentS.pathFinder.findPath(currentPos, targetPosition) ?: return false
-
-			for (i in 0 until path.length) {
-				val nextPos = path.node(i)
-				val dir = currentPos.directionTo(nextPos)
-				if (!walk(dir)) {
-					return false
-				}
-				currentPos = nextPos
-			}
-
-			return true
-		}
-
-		/** Own position */
-		suspend fun position(): Vec2 {
-			val aiContext = coroutineContext[AICoroutineManager.AIContext]!!
-			return aiContext.agentS.positionC[aiContext.entity].pos
-		}
-
-		/** How many items of this type are in my inventory? */
-		suspend fun inventoryCount(item: Item):Int {
-			val aiContext = coroutineContext[AICoroutineManager.AIContext]!!
-			return aiContext.agentS.agentC[aiContext.entity].inventory[item.ordinal]
-		}
-
-		/** How many items of this type are on this tile? */
-		suspend fun tileCount(item: Item):Int {
-			val aiContext = coroutineContext[AICoroutineManager.AIContext]!!
-			val pos = aiContext.agentS.positionC[aiContext.entity].pos
-			return aiContext.agentS.world.getItemCount(pos, item)
-		}
-
-		/** Get tile at [position] + [offset].
-		 * Can't look further than [MAX_LOOK_DISTANCE] manhattan distance. */
-		suspend fun tileAt(offset:Vec2): Tile {
-			assert (offset.manhLen <= MAX_LOOK_DISTANCE)
-			val aiContext = coroutineContext[AICoroutineManager.AIContext]!!
-			val pos = aiContext.agentS.positionC[aiContext.entity].pos
-			return aiContext.agentS.world.getTile(pos + offset)
-		}
-
-		/** Get feature at [position] + [offset].
-		 * Can't look further than [MAX_LOOK_DISTANCE] manhattan distance. */
-		suspend fun featureAt(offset:Vec2): Feature? {
-			assert (offset.manhLen <= MAX_LOOK_DISTANCE)
-			val aiContext = coroutineContext[AICoroutineManager.AIContext]!!
-			val pos = aiContext.agentS.positionC[aiContext.entity].pos
-			return aiContext.agentS.world.getFeature(pos + offset)
-		}
-
-		const val MAX_LOOK_DISTANCE = 4
-	}
-
 }
 

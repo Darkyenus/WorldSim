@@ -21,7 +21,8 @@ import kotlin.math.max
 class AICoroutineExecutorService(val maxRealTimePerUpdateNanos:Long = 10_000_000L) : ScheduledExecutorService {
 
 	private var inShutdown = false
-	private var currentNanoTime = 0L
+	var currentNanoTime = 0L
+		private set
 
 	private val queue = PriorityQueue<AIFuture<*>>(128)
 

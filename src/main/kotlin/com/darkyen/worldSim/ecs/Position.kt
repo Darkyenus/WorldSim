@@ -37,7 +37,7 @@ class PositionS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(Positio
 	@Wire
 	private lateinit var positionMapper: Mapper<PositionC>
 	@Wire
-	private lateinit var agentMapper: Mapper<AgentC>
+	private lateinit var agentS: AgentS
 	@Wire
 	private lateinit var world: World
 
@@ -61,7 +61,7 @@ class PositionS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(Positio
 			position.pos += movement.vec
 			position.progress = min(newProgress - 1f, 1f)
 			position.movement = Direction.NONE
-			agentMapper[entity]?.continueAfter(AgentC.Action.MOVEMENT)
+			agentS.continueEntity(entity)
 
 			val newChunkKey = position.pos.chunkKey
 

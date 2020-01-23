@@ -36,7 +36,7 @@ class WorldPathFinder(private val world:World) {
 	/** The unique ID for each search run. Used to mark nodes.  */
 	private var searchId = 0
 
-	fun findPath(from: Vec2, to: Vec2): Path? {
+	fun findPath(from: Vec2, to: Vec2, endPositions:LongArray): Path? {
 		initSearch(from, to)
 		val openList = openList
 		do {
@@ -44,8 +44,8 @@ class WorldPathFinder(private val world:World) {
 			val current:NodeRecord = openList.pop()
 			current.category = CLOSED
 			// Terminate if we reached the goal node
-			if (current.node == to) {
-				return generateNodePath(to)
+			if (current.node.packed in endPositions) {
+				return generateNodePath(current.node)
 			}
 			visitChildren(current, to)
 		} while (openList.size > 0)
@@ -53,7 +53,7 @@ class WorldPathFinder(private val world:World) {
 		return null
 	}
 
-	fun findPathInTimeLimit(from: Vec2, to: Vec2, maxTimeNanos:Long): Path? {
+	fun findPathInTimeLimit(from: Vec2, to: Vec2, endPositions:LongArray, maxTimeNanos:Long): Path? {
 		val endTime = System.nanoTime() + maxTimeNanos
 
 		initSearch(from, to)
@@ -64,8 +64,8 @@ class WorldPathFinder(private val world:World) {
 			val current:NodeRecord = openList.pop()
 			current.category = CLOSED
 			// Terminate if we reached the goal node
-			if (current.node == to) {
-				return generateNodePath(to)
+			if (current.node.packed in endPositions) {
+				return generateNodePath(current.node)
 			}
 
 			if ((++iteration and 0b1111) == 0 && System.nanoTime() >= endTime) {
@@ -79,7 +79,7 @@ class WorldPathFinder(private val world:World) {
 		return null
 	}
 
-	fun findPathWithMaxComplexity(from: Vec2, to: Vec2, maxComplexityCostFactor:Float): Path? {
+	fun findPathWithMaxComplexity(from: Vec2, to: Vec2, endPositions:LongArray, maxComplexityCostFactor:Float): Path? {
 		val maxCost = estimateDistance(from, to) * maxComplexityCostFactor
 
 		initSearch(from, to)
@@ -89,8 +89,8 @@ class WorldPathFinder(private val world:World) {
 			val current:NodeRecord = openList.pop()
 			current.category = CLOSED
 			// Terminate if we reached the goal node
-			if (current.node == to) {
-				return generateNodePath(to)
+			if (current.node.packed in endPositions) {
+				return generateNodePath(current.node)
 			}
 
 			if (current.costSoFar > maxCost) {

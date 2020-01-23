@@ -70,6 +70,8 @@ class RenderS(var pixelsPerUnit: Int = 0) : EntitySystem(COMPONENT_DOMAIN.family
 	@Wire
 	private lateinit var position: Mapper<PositionC>
 	@Wire
+	private lateinit var agent: Mapper<AgentC>
+	@Wire
 	private lateinit var render: Mapper<RenderC>
 
 	companion object {
@@ -206,6 +208,14 @@ class RenderS(var pixelsPerUnit: Int = 0) : EntitySystem(COMPONENT_DOMAIN.family
 					val render = render[entity]
 
 					WorldSim.sprites[render.sprite].render(b, pos.x, pos.y, 1f, 1f)
+
+					// Render activity info, if available
+					agent[entity]?.let {
+						val spriteId = it.activity.sprite
+						if (spriteId != -1) {
+							WorldSim.sprites[spriteId].render(b, pos.x, pos.y, 1f, 1f)
+						}
+					}
 				}
 			}
 		}

@@ -8,6 +8,7 @@ import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.utils.Disposable
 import com.badlogic.gdx.utils.viewport.ScreenViewport
+import com.darkyen.worldSim.ecs.AgentNeedS
 import com.darkyen.worldSim.ecs.AgentS
 import com.darkyen.worldSim.ecs.COMPONENT_DOMAIN
 import com.darkyen.worldSim.ecs.CameraFree
@@ -25,6 +26,7 @@ class WorldSimGame : Screen {
 	private val engine = Engine(COMPONENT_DOMAIN,
 			World(NoiseWorldGenerator(), EntityChunkPopulator),
 			PathFinder(),
+			AgentNeedS(),
 			AgentS(),
 			PositionS(),
 			CameraFree(),

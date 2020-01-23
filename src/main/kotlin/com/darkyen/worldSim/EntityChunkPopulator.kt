@@ -1,6 +1,8 @@
 package com.darkyen.worldSim
 
-import com.darkyen.worldSim.ai.simpleBrain
+import com.darkyen.worldSim.ai.AIContext
+import com.darkyen.worldSim.ai.brain
+import com.darkyen.worldSim.ecs.AGENT_ATTRIBUTES
 import com.darkyen.worldSim.ecs.AgentC
 import com.darkyen.worldSim.ecs.ChunkPopulator
 import com.darkyen.worldSim.ecs.MATURITY_AGE_YEAR
@@ -10,6 +12,7 @@ import com.darkyen.worldSim.ecs.World
 import com.darkyen.worldSim.ecs.atTile
 import com.darkyen.worldSim.util.Vec2
 import com.github.antag99.retinazer.Engine
+import kotlin.math.max
 import kotlin.random.Random
 
 /**
@@ -47,7 +50,11 @@ object EntityChunkPopulator : ChunkPopulator {
 			val age = Random.nextInt(0, 70)
 
 			positionC.create(entity).pos = worldPos
-			agentC.add(entity, AgentC(::simpleBrain, genderMale))
+			agentC.add(entity, AgentC(AIContext::brain, genderMale).also {
+				for (attribute in AGENT_ATTRIBUTES) {
+					it.attributes[attribute.ordinal] = Random.nextInt(max(attribute.min.toInt(), 0), attribute.max + 1).toByte()
+				}
+			})
 			renderC.create(entity).sprite = when {
 				age < MATURITY_AGE_YEAR -> childSprites
 				genderMale -> maleSprites

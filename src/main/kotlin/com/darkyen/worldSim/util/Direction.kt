@@ -3,23 +3,36 @@ package com.darkyen.worldSim.util
 /** A movement direction. */
 enum class Direction(val deltaX:Int, val deltaY:Int) {
 	NONE(0, 0),
-	LEFT(-1, 0),
-	RIGHT(1, 0),
 	UP(0, 1),
-	DOWN(0, -1);
+	RIGHT(1, 0),
+	DOWN(0, -1),
+	LEFT(-1, 0);
 
 	val vec = Vec2(deltaX, deltaY)
+
+	val right:Direction
+		get() = DIRECTIONS[ordinal % 4]
+
+	val left:Direction
+		get() = DIRECTIONS[(ordinal + 2) % 4]
 }
 
 operator fun Direction.times(scalar:Int):Vec2 {
 	return vec * scalar
 }
 
-val DIRECTIONS = longArrayOf(
-	Direction.LEFT.vec.packed,
-	Direction.RIGHT.vec.packed,
-	Direction.UP.vec.packed,
-	Direction.DOWN.vec.packed
+val DIRECTIONS = arrayOf(
+		Direction.UP,
+		Direction.RIGHT,
+		Direction.DOWN,
+		Direction.LEFT
+)
+
+val DIRECTION_VECTORS = longArrayOf(
+		Direction.UP.vec.packed,
+		Direction.RIGHT.vec.packed,
+		Direction.DOWN.vec.packed,
+		Direction.LEFT.vec.packed
 )
 
 fun Vec2.directionTo(other:Vec2):Direction {
@@ -35,13 +48,25 @@ fun Vec2.directionTo(other:Vec2):Direction {
 }
 
 inline fun forDirections(action:(Vec2)->Unit) {
-	for (side in DIRECTIONS) {
+	for (side in DIRECTION_VECTORS) {
 		action(Vec2(side))
 	}
 }
 
 inline fun forPositionsAround(base:Vec2, action:(Vec2)->Unit) {
-	for (side in DIRECTIONS) {
+	for (side in DIRECTION_VECTORS) {
 		action(base + Vec2(side))
 	}
+}
+
+inline fun anyPositionNearIs(base:Vec2, condition:(Vec2)->Boolean):Boolean {
+	if (condition(base)) {
+		return true
+	}
+	for (side in DIRECTION_VECTORS) {
+		if (condition(base + Vec2(side))) {
+			return true
+		}
+	}
+	return false
 }
