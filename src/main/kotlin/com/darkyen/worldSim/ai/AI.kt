@@ -13,6 +13,7 @@ import com.darkyen.worldSim.ecs.AgentS
 import com.darkyen.worldSim.ecs.CHUNK_SIZE_SHIFT
 import com.darkyen.worldSim.ecs.PositionC
 import com.darkyen.worldSim.ecs.World
+import com.darkyen.worldSim.ecs.forChunksNear
 import com.darkyen.worldSim.ecs.get
 import com.darkyen.worldSim.ecs.set
 import com.darkyen.worldSim.util.Direction
@@ -181,22 +182,6 @@ fun AIContext.featureAt(offset: Vec2): Feature? {
 }
 
 const val AGENT_VISIBILITY_DISTANCE = 10
-
-private inline fun World.forChunksNear(pos:Vec2, distance:Int, action:(World.Chunk) -> Unit) {
-	val centerX = pos.x
-	val centerY = pos.y
-
-	val firstChunkX = (centerX - distance) shr CHUNK_SIZE_SHIFT
-	val lastChunkX = (centerX + distance) shr CHUNK_SIZE_SHIFT
-	val firstChunkY = (centerY - distance) shr CHUNK_SIZE_SHIFT
-	val lastChunkY = (centerY + distance) shr CHUNK_SIZE_SHIFT
-	for (x in firstChunkX .. lastChunkX) {
-		for (y in firstChunkY .. lastChunkY) {
-			val chunk = getChunk(Vec2(x shl CHUNK_SIZE_SHIFT, y shl CHUNK_SIZE_SHIFT)) ?: continue
-			action(chunk)
-		}
-	}
-}
 
 private inline fun AIContext.forNearbyEntities(action:(mDistance:Int, entity:Int) -> Unit) {
 	val self = entity

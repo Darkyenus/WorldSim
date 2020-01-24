@@ -17,7 +17,7 @@ class CameraTrackerS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(Positio
 	@Wire
 	private lateinit var cameraTrackerMapper: Mapper<CameraTrackerC>
 	@Wire
-	private lateinit var renderS: RenderS
+	private lateinit var camera: CameraService
 
 	private val thisFrameFraming = Rectangle()
 	private val tmp = Rectangle()
@@ -27,7 +27,7 @@ class CameraTrackerS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(Positio
 		firstEntity = true
 		super.update(delta)
 		if (!firstEntity) {
-			renderS.lookAt.set(thisFrameFraming)
+			camera.lookAt.set(thisFrameFraming)
 		}
 	}
 

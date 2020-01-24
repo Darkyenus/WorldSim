@@ -79,6 +79,11 @@ public final class Text implements CharSequence {
     }
 
     public Text append(float number, int decimals){
+        if (number < 0) {
+            append('-');
+            number = -number;
+        }
+
         append((int) number);
         append('.');
         number = number % 1f;
@@ -100,6 +105,7 @@ public final class Text implements CharSequence {
         if(number < 0){
             append('-');
             number = -number;
+            at += 1;
         }
         int places = 0;
         {//Count the number of places

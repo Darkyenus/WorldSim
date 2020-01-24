@@ -249,6 +249,22 @@ class World(
 	}
 }
 
+inline fun World.forChunksNear(pos:Vec2, distance:Int, action:(World.Chunk) -> Unit) {
+	val centerX = pos.x
+	val centerY = pos.y
+
+	val firstChunkX = (centerX - distance) shr CHUNK_SIZE_SHIFT
+	val lastChunkX = (centerX + distance) shr CHUNK_SIZE_SHIFT
+	val firstChunkY = (centerY - distance) shr CHUNK_SIZE_SHIFT
+	val lastChunkY = (centerY + distance) shr CHUNK_SIZE_SHIFT
+	for (x in firstChunkX .. lastChunkX) {
+		for (y in firstChunkY .. lastChunkY) {
+			val chunk = getChunk(Vec2(x shl CHUNK_SIZE_SHIFT, y shl CHUNK_SIZE_SHIFT)) ?: continue
+			action(chunk)
+		}
+	}
+}
+
 interface WorldGenerator {
 	fun generateChunk(world: World, chunk: World.Chunk, chunkPos:Vec2)
 }

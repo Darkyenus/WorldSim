@@ -3,21 +3,13 @@ package com.darkyen.worldSim.ecs
 import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.graphics.Color
-import com.badlogic.gdx.graphics.GL20
-import com.badlogic.gdx.graphics.OrthographicCamera
-import com.badlogic.gdx.graphics.Pixmap
-import com.badlogic.gdx.graphics.Texture
 import com.badlogic.gdx.graphics.g2d.Batch
-import com.badlogic.gdx.graphics.glutils.FrameBuffer
-import com.badlogic.gdx.graphics.glutils.HdpiUtils
 import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
-import com.badlogic.gdx.utils.viewport.ExtendViewport
-import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.darkyen.worldSim.WorldSim
 import com.darkyen.worldSim.WorldSimGame
 import com.darkyen.worldSim.input.GameInput
@@ -33,16 +25,13 @@ import com.github.antag99.retinazer.Component
 import com.github.antag99.retinazer.EntitySystem
 import com.github.antag99.retinazer.Mapper
 import com.github.antag99.retinazer.Wire
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.roundToInt
 
 /** This entity is rendered. */
 class RenderC : Component {
 	var sprite:Int = 0
 }
 
-class RenderS(var pixelsPerUnit: Int = 0) : EntitySystem(COMPONENT_DOMAIN.familyWith(PositionC::class.java, RenderC::class.java)), WorldSimGame.UILayerProvider, WorldSimGame.InputProcessorProvider {
+class RenderS : EntitySystem(COMPONENT_DOMAIN.familyWith(PositionC::class.java, RenderC::class.java)), WorldSimGame.UILayerProvider, WorldSimGame.InputProcessorProvider {
 
 	private var debugDrawEnabled = false
 		set(value) {
@@ -50,20 +39,6 @@ class RenderS(var pixelsPerUnit: Int = 0) : EntitySystem(COMPONENT_DOMAIN.family
 			field = value
 		}
 
-	private val viewport = ExtendViewport(1f, 1f).apply { //arbitrary
-		val camera = camera
-		camera.direction[0f, 0f] = -1f
-		camera.up[0f, 1f] = 0f
-		camera.near = 0.5f
-		camera.far = 1.5f
-	}
-
-	val lookAt = Rectangle()
-
-	private val frameBufferViewport = ScreenViewport(OrthographicCamera().apply {
-		setToOrtho(true)
-	})
-	private var pixelFrameBuffer: FrameBuffer? = null
 
 	@Wire
 	private lateinit var world: World
@@ -73,6 +48,8 @@ class RenderS(var pixelsPerUnit: Int = 0) : EntitySystem(COMPONENT_DOMAIN.family
 	private lateinit var agent: Mapper<AgentC>
 	@Wire
 	private lateinit var render: Mapper<RenderC>
+	@Wire
+	private lateinit var camera: CameraService
 
 	companion object {
 		var DEBUG_DRAW_INFO: CharSequence? = null
@@ -85,81 +62,20 @@ class RenderS(var pixelsPerUnit: Int = 0) : EntitySystem(COMPONENT_DOMAIN.family
 	private val debugDrawText = Text()
 	private val frustum = Rectangle()
 
-
-	private fun align(c: Float): Float {
-		val k = pixelsPerUnit.toFloat()
-		return (c * k).roundToInt() / k
-	}
-
 	override fun update(delta: Float) {
 		if (debugDrawEnabled) {
 			updateDebugDrawing()
 		}
 
-		val v = viewport
-		val lookAt = lookAt
-		val position = v.camera.position
-		val w = Gdx.graphics.width
-		val h = Gdx.graphics.height
-		val bw = Gdx.graphics.backBufferWidth
-		val bh = Gdx.graphics.backBufferHeight
-		val frameBufferAreaWidth: Int
-		val frameBufferAreaHeight: Int
-		val frameBufferDrawWidth: Int
-		val frameBufferDrawHeight: Int
-		val frameBuffer: FrameBuffer?
-		if (pixelsPerUnit != 0) { //Complex with framebuffer
-			//How big pixels should be?
-			val minPixelsW = (lookAt.width * pixelsPerUnit).toInt()
-			val minPixelsH = (lookAt.height * pixelsPerUnit).toInt()
-			if (minPixelsW == 0 || minPixelsH == 0) return
-			val virtualPixelSize = max(min(bw / minPixelsW, bh / minPixelsH), 1)
-			position.x = align(lookAt.x + lookAt.width / 2)
-			position.y = align(lookAt.y + lookAt.height / 2)
-			position.z = 1f
-			//Round up to nearest even number, helps with visual glitches for some reason
-			val fbWidth = (bw / virtualPixelSize + 1) and 1.inv()
-			val fbHeight = (bh / virtualPixelSize + 1) and 1.inv()
-			val minUnitsWidth = fbWidth / pixelsPerUnit.toFloat()
-			val minUnitsHeight = fbHeight / pixelsPerUnit.toFloat()
-			v.minWorldWidth = minUnitsWidth
-			v.minWorldHeight = minUnitsHeight
-			v.update(fbWidth, fbHeight, false)
-			Gdx.gl.glViewport(v.screenX, v.screenY, v.screenWidth, v.screenHeight) //Override v.update viewport
-			frameBufferAreaWidth = fbWidth
-			frameBufferAreaHeight = fbHeight
-			frameBufferDrawWidth = HdpiUtils.toLogicalX(fbWidth * virtualPixelSize)
-			frameBufferDrawHeight = HdpiUtils.toLogicalY(fbHeight * virtualPixelSize)
-			val existing = pixelFrameBuffer
-			if (existing != null && existing.width >= fbWidth && existing.height >= fbHeight) {
-				frameBuffer = existing
-			} else {
-				existing?.dispose()
-				if (fbWidth <= 1 || fbHeight <= 1 || fbWidth > 8000 || fbHeight > 8000) return
-				frameBuffer = FrameBuffer(Pixmap.Format.RGB888, fbWidth, fbHeight, false, false)
-				pixelFrameBuffer = frameBuffer
-			}
-			frameBuffer.bind()
-			Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
-		} else { //Simple
-			v.minWorldWidth = lookAt.width
-			v.minWorldHeight = lookAt.height
-			position.x = lookAt.x + lookAt.width / 2
-			position.y = lookAt.y + lookAt.height / 2
-			position.z = 1f
-			v.update(w, h, false)
-			frameBuffer = null
-			frameBufferAreaHeight = 0
-			frameBufferAreaWidth = frameBufferAreaHeight
-			frameBufferDrawHeight = 0
-			frameBufferDrawWidth = frameBufferDrawHeight
-		}
+		val v = camera.viewport
+
+
 		val batch = WorldSim.batch
 		batch.projectionMatrix = v.camera.combined
 		batch.packedColor = WHITE_BITS
 		batch.begin()
-		val start = v.unproject(tmp1.set(0f, h.toFloat()))
-		val end = v.unproject(tmp2.set(w.toFloat(), 0f))
+		val start = v.unproject(tmp1.set(v.screenX.toFloat(), (v.screenY + v.screenHeight).toFloat()))
+		val end = v.unproject(tmp2.set((v.screenX + v.screenWidth).toFloat(), v.screenY.toFloat()))
 
 		start.add(-OVERLAP, -OVERLAP)
 		end.add(OVERLAP, OVERLAP)
@@ -167,18 +83,6 @@ class RenderS(var pixelsPerUnit: Int = 0) : EntitySystem(COMPONENT_DOMAIN.family
 		draw(batch, Vec2(MathUtils.floor(start.x), MathUtils.floor(start.y)), Vec2(MathUtils.ceil(end.x), MathUtils.ceil(end.y)), frustum)
 
 		batch.end()
-		if (frameBuffer != null) {
-			FrameBuffer.unbind()
-			val fbv = frameBufferViewport
-			fbv.update(w, h, true)
-			batch.projectionMatrix = fbv.camera.combined
-			batch.packedColor = WHITE_BITS
-			batch.begin()
-			val colorBufferTexture = frameBuffer.colorBufferTexture
-			colorBufferTexture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Nearest)
-			batch.draw(colorBufferTexture, 0f, 0f, frameBufferDrawWidth.toFloat(), frameBufferDrawHeight.toFloat(), 0, 0, frameBufferAreaWidth, frameBufferAreaHeight, false, false)
-			batch.end()
-		}
 	}
 
 	private fun draw(b: Batch, low:Vec2, high:Vec2, frustum: Rectangle) {
@@ -245,9 +149,11 @@ class RenderS(var pixelsPerUnit: Int = 0) : EntitySystem(COMPONENT_DOMAIN.family
 		memData.addDataPoint((rt.totalMemory() - rt.freeMemory()) / 1000f)
 		entityCount.addDataPoint(engine.entities.size().toFloat())
 
+		val cursorPos = camera.unproject(Gdx.input.x, Gdx.input.y)
+
 		val text = debugDrawText
 		text.clear()
-		text.append("X: ").append(lookAt.x + lookAt.width/2f, 2).append(" Y: ").append(lookAt.y + lookAt.height/2f, 2)
+		text.append("X: ").append(cursorPos.x, 2).append(" Y: ").append(cursorPos.y, 2)
 		text.append("\nFPS: ").append(Gdx.graphics.framesPerSecond).append('\n').append(DEBUG_DRAW_INFO)
 		debugTextLabel.setText(text)
 	}

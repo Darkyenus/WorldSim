@@ -11,7 +11,7 @@ import com.github.antag99.retinazer.Wire
 /**
  *
  */
-class CameraFree : EngineService, WorldSimGame.InputProcessorProvider {
+class CameraControllerFree : EngineService, WorldSimGame.InputProcessorProvider {
 
 	private val upInput = GameInput.function("Move Up", GameInput.Binding.bindKeyboard(Input.Keys.W))
 	private val downInput = GameInput.function("Move Down", GameInput.Binding.bindKeyboard(Input.Keys.S))
@@ -36,7 +36,7 @@ class CameraFree : EngineService, WorldSimGame.InputProcessorProvider {
 	override val inputProcessor = GameInput(upInput, downInput, leftInput, rightInput, zoomInInput, zoomOutInput)
 
 	@Wire
-	private lateinit var renderS:RenderS
+	private lateinit var camera:CameraService
 
 	private val movement = Vector2()
 	private val lookAt = Vector2()
@@ -65,6 +65,6 @@ class CameraFree : EngineService, WorldSimGame.InputProcessorProvider {
 		}
 
 		val lookAtSize = zoomLevel.toFloat()
-		renderS.lookAt.set(lookAt.x - lookAtSize / 2f, lookAt.y - lookAtSize / 2f, lookAtSize, lookAtSize)
+		camera.lookAt.set(lookAt.x - lookAtSize / 2f, lookAt.y - lookAtSize / 2f, lookAtSize, lookAtSize)
 	}
 }

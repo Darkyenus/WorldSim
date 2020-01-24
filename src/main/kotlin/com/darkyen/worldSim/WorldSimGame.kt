@@ -8,10 +8,12 @@ import com.badlogic.gdx.scenes.scene2d.Actor
 import com.badlogic.gdx.scenes.scene2d.Stage
 import com.badlogic.gdx.utils.Disposable
 import com.badlogic.gdx.utils.viewport.ScreenViewport
+import com.darkyen.worldSim.ecs.AgentDetailUI
 import com.darkyen.worldSim.ecs.AgentNeedS
 import com.darkyen.worldSim.ecs.AgentS
 import com.darkyen.worldSim.ecs.COMPONENT_DOMAIN
-import com.darkyen.worldSim.ecs.CameraFree
+import com.darkyen.worldSim.ecs.CameraControllerFree
+import com.darkyen.worldSim.ecs.CameraService
 import com.darkyen.worldSim.ecs.PathFinder
 import com.darkyen.worldSim.ecs.PositionS
 import com.darkyen.worldSim.ecs.RenderS
@@ -29,7 +31,9 @@ class WorldSimGame : Screen {
 			AgentNeedS(),
 			AgentS(),
 			PositionS(),
-			CameraFree(),
+			CameraControllerFree(),
+			CameraService(),
+			AgentDetailUI(),
 			RenderS()
 	)
 
