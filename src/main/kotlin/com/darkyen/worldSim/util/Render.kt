@@ -1,4 +1,4 @@
-package com.darkyen.worldSim.render
+package com.darkyen.worldSim.util
 
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.g2d.Batch

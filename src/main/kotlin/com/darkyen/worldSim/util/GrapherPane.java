@@ -1,4 +1,4 @@
-package com.darkyen.worldSim.ui.debug;
+package com.darkyen.worldSim.util;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;

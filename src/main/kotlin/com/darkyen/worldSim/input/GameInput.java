@@ -15,8 +15,6 @@ import java.util.Objects;
 
 /**
  * Input processor that offers advanced rebindable keys, system of triggers and saving of the bindings
- *
- * @author Darkyen
  */
 @SuppressWarnings("unused")
 public final class GameInput implements InputProcessor {

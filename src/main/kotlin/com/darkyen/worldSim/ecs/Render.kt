@@ -15,11 +15,11 @@ import com.darkyen.worldSim.SimulationSpeedRegulator
 import com.darkyen.worldSim.WorldSim
 import com.darkyen.worldSim.WorldSimGame
 import com.darkyen.worldSim.input.GameInput
-import com.darkyen.worldSim.render.WHITE_BITS
-import com.darkyen.worldSim.render.render
-import com.darkyen.worldSim.render.renderTile
-import com.darkyen.worldSim.ui.debug.GrapherPane
-import com.darkyen.worldSim.ui.debug.GrapherPane.GraphData
+import com.darkyen.worldSim.util.WHITE_BITS
+import com.darkyen.worldSim.util.render
+import com.darkyen.worldSim.util.renderTile
+import com.darkyen.worldSim.util.GrapherPane
+import com.darkyen.worldSim.util.GrapherPane.GraphData
 import com.darkyen.worldSim.util.Text
 import com.darkyen.worldSim.util.Vec2
 import com.github.antag99.retinazer.Component
