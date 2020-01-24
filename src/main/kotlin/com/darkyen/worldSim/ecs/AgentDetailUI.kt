@@ -9,7 +9,6 @@ import com.darkyen.worldSim.ITEMS
 import com.darkyen.worldSim.WorldSim
 import com.darkyen.worldSim.WorldSimGame
 import com.darkyen.worldSim.util.Vec2
-import com.darkyen.worldSim.util.forEach
 import com.github.antag99.retinazer.EngineService
 import com.github.antag99.retinazer.Mapper
 import com.github.antag99.retinazer.Wire
@@ -24,34 +23,31 @@ class AgentDetailUI : EngineService, WorldSimGame.UILayerProvider {
 	private lateinit var camera:CameraService
 
 	@Wire
-	private lateinit var world:World
-	@Wire
 	private lateinit var positionC: Mapper<PositionC>
-
 	@Wire
 	private lateinit var agentC: Mapper<AgentC>
+	@Wire
+	private lateinit var agentSpatialLookup:AgentSpatialLookup
 
 	private val selectDistance = 1
 
-	override fun update(realDelta: Float) {
+	override fun update() {
 		val pointingAt = camera.unproject(Gdx.input.x, Gdx.input.y)
 
 		var nearestEntity = -1
 		var nearestEntityDst2 = Float.POSITIVE_INFINITY
 
-		world.forChunksNear(Vec2(pointingAt.x.roundToInt(), pointingAt.y.roundToInt()), selectDistance) { chunk ->
-			chunk.entities.indices.forEach { entity ->
-				val position = positionC[entity] ?: return@forEach
-				val dist2 = pointingAt.dst2(position.pos.x.toFloat(), position.pos.y.toFloat())
+		agentSpatialLookup.forEntitiesNear(Vec2(pointingAt.x.roundToInt(), pointingAt.y.roundToInt()), selectDistance) { entity: Int, _: Int ->
+			val position = positionC[entity] ?: return@forEntitiesNear
+			val dist2 = pointingAt.dst2(position.pos.x.toFloat(), position.pos.y.toFloat())
 
-				if (dist2 > selectDistance) {
-					return@forEach
-				}
+			if (dist2 > selectDistance) {
+				return@forEntitiesNear
+			}
 
-				if (dist2 < nearestEntityDst2) {
-					nearestEntityDst2 = dist2
-					nearestEntity = entity
-				}
+			if (dist2 < nearestEntityDst2) {
+				nearestEntityDst2 = dist2
+				nearestEntity = entity
 			}
 		}
 

@@ -35,7 +35,7 @@ public abstract class UISystem implements InputProcessor, EngineService {
     private int lastW, lastH;
 
     @Override
-    public void update(float delta) {
+    public void update() {
         final int w = Gdx.graphics.getWidth(), h = Gdx.graphics.getHeight();
         if(w != lastW || h != lastH){
             layout();
@@ -44,7 +44,7 @@ public abstract class UISystem implements InputProcessor, EngineService {
             lastH = h;
         }
 
-        root.act(delta);
+        root.act(Gdx.graphics.getDeltaTime());
         root.draw();
     }
 

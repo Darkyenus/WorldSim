@@ -20,7 +20,6 @@ import com.darkyen.worldSim.ui.debug.GrapherPane
 import com.darkyen.worldSim.ui.debug.GrapherPane.GraphData
 import com.darkyen.worldSim.util.Text
 import com.darkyen.worldSim.util.Vec2
-import com.darkyen.worldSim.util.forEach
 import com.github.antag99.retinazer.Component
 import com.github.antag99.retinazer.EntitySystem
 import com.github.antag99.retinazer.Mapper
@@ -31,7 +30,11 @@ class RenderC : Component {
 	var sprite:Int = 0
 }
 
-class RenderS : EntitySystem(COMPONENT_DOMAIN.familyWith(PositionC::class.java, RenderC::class.java)), WorldSimGame.UILayerProvider, WorldSimGame.InputProcessorProvider {
+private val RENDER_FAMILY = COMPONENT_DOMAIN.familyWith(PositionC::class.java, RenderC::class.java)
+
+class RenderSpatialLookup : SpatialLookupService(RENDER_FAMILY)
+
+class RenderS : EntitySystem(RENDER_FAMILY), WorldSimGame.UILayerProvider, WorldSimGame.InputProcessorProvider {
 
 	private var debugDrawEnabled = false
 		set(value) {
@@ -52,6 +55,8 @@ class RenderS : EntitySystem(COMPONENT_DOMAIN.familyWith(PositionC::class.java, 
 	private lateinit var render: Mapper<RenderC>
 	@Wire
 	private lateinit var camera: CameraService
+	@Wire
+	private lateinit var renderSpatialLookup: RenderSpatialLookup
 
 	companion object {
 		private const val OVERLAP = 5f
@@ -62,7 +67,7 @@ class RenderS : EntitySystem(COMPONENT_DOMAIN.familyWith(PositionC::class.java, 
 	private val debugDrawText = Text()
 	private val frustum = Rectangle()
 
-	override fun update(realDelta: Float) {
+	override fun update() {
 		if (debugDrawEnabled) {
 			updateDebugDrawing()
 		}
@@ -101,32 +106,26 @@ class RenderS : EntitySystem(COMPONENT_DOMAIN.familyWith(PositionC::class.java, 
 		val posTmp = Vector2()
 
 		// Draw entities
-		for (chunkY in high.chunkY downTo low.chunkY) {
-			for (chunkX in low.chunkX..high.chunkX) {
-				val chunkCornerPos = Vec2.ofChunkCorner(chunkX, chunkY)
-				val chunk = world.getChunk(chunkCornerPos) ?: continue
-				chunk.entities.indices.forEach { entity ->
-					val position = position[entity]
-					val pos = position.getPosition(posTmp)
-					if (!frustum.contains(pos)) return@forEach //Frustum culling
-					val sprite = WorldSim.sprites[render[entity].sprite]
+		renderSpatialLookup.forEntitiesInChunksSpanningRectangle(low, high) { entity ->
+			val position = position[entity]
+			val pos = position.getPosition(posTmp)
+			if (!frustum.contains(pos)) return@forEntitiesInChunksSpanningRectangle //Frustum culling
+			val sprite = WorldSim.sprites[render[entity].sprite]
 
-					val activity = agent[entity]?.activity ?: AgentActivity.IDLE
+			val activity = agent[entity]?.activity ?: AgentActivity.IDLE
 
-					if (activity == AgentActivity.SLEEPING) {
-						val rotation = if ((entity and 1) == 1) 90f else -90f
-						sprite.render(b, pos.x, pos.y, 1f, 1f, rotation)
-					} else {
-						sprite.render(b, pos.x, pos.y, 1f, 1f)
-					}
+			if (activity == AgentActivity.SLEEPING) {
+				val rotation = if ((entity and 1) == 1) 90f else -90f
+				sprite.render(b, pos.x, pos.y, 1f, 1f, rotation)
+			} else {
+				sprite.render(b, pos.x, pos.y, 1f, 1f)
+			}
 
 
-					// Render activity info, if available
-					val spriteId = activity.sprite
-					if (spriteId != -1) {
-						WorldSim.sprites[spriteId].render(b, pos.x, pos.y, 1f, 1f)
-					}
-				}
+			// Render activity info, if available
+			val spriteId = activity.sprite
+			if (spriteId != -1) {
+				WorldSim.sprites[spriteId].render(b, pos.x, pos.y, 1f, 1f)
 			}
 		}
 	}

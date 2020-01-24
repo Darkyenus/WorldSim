@@ -11,6 +11,7 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.darkyen.worldSim.ecs.AgentDetailUI
 import com.darkyen.worldSim.ecs.AgentNeedS
 import com.darkyen.worldSim.ecs.AgentS
+import com.darkyen.worldSim.ecs.AgentSpatialLookup
 import com.darkyen.worldSim.ecs.AgentSpeechS
 import com.darkyen.worldSim.ecs.COMPONENT_DOMAIN
 import com.darkyen.worldSim.ecs.CameraControllerFree
@@ -19,6 +20,7 @@ import com.darkyen.worldSim.ecs.DecayS
 import com.darkyen.worldSim.ecs.PathFinder
 import com.darkyen.worldSim.ecs.PositionS
 import com.darkyen.worldSim.ecs.RenderS
+import com.darkyen.worldSim.ecs.RenderSpatialLookup
 import com.darkyen.worldSim.ecs.SimulationSpeed
 import com.darkyen.worldSim.ecs.World
 import com.darkyen.worldSim.input.InputStack
@@ -36,7 +38,11 @@ class WorldSimGame : Screen {
 			AgentNeedS(),
 			AgentS(),
 			AgentSpeechS(),
+
 			PositionS(),
+			AgentSpatialLookup(),
+			RenderSpatialLookup(),
+
 			CameraControllerFree(),
 			CameraService(),
 			AgentDetailUI(),
@@ -64,7 +70,7 @@ class WorldSimGame : Screen {
 
 	override fun render(delta: Float) {
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT)
-		engine.update(delta)
+		engine.update()
 		stage.act(delta)
 		stage.draw()
 	}

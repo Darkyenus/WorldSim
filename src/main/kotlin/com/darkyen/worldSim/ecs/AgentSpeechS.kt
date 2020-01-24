@@ -32,11 +32,6 @@ class AgentSpeechS : EntitySystem(COMPONENT_DOMAIN.familyWith(PositionC::class.j
 	lateinit var agentC: Mapper<AgentC>
 	@Wire
 	lateinit var agentSpeechC: Mapper<AgentSpeechC>
-
-	override fun update(realDelta: Float) {
-		val delta = simulationClock.simulationDelta
-		super.update(delta)
-	}
 }
 
 /**

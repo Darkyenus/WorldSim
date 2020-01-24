@@ -1,5 +1,6 @@
 package com.darkyen.worldSim.ecs
 
+import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.math.MathUtils
 import com.darkyen.worldSim.WorldSimGame
@@ -38,7 +39,8 @@ class SimulationSpeed : EngineService, WorldSimGame.InputProcessorProvider {
 
 	override val inputProcessor = GameInput(faster, slower, paused)
 
-	override fun update(delta: Float) {
+	override fun update() {
+		val delta = Gdx.graphics.deltaTime
 		simulationDelta = delta * multiplier
 	}
 }

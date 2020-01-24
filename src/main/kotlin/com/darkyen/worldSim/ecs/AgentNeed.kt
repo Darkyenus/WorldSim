@@ -23,12 +23,12 @@ class AgentNeedS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(AgentC::cla
 
 	private var dayProgress = 0f
 
-	override fun update(realDelta: Float) {
+	override fun update() {
 		val delta = simulationClock.simulationDelta
 		dayProgress += delta
 		while (dayProgress >= HOUR_LENGTH_IN_REAL_SECONDS) {
 			dayProgress -= HOUR_LENGTH_IN_REAL_SECONDS
-			super.update(HOUR_LENGTH_IN_REAL_SECONDS)
+			super.update()
 		}
 	}
 
@@ -44,7 +44,7 @@ class AgentNeedS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(AgentC::cla
 		}
 		val direness = (value - attribute.min) / (deathThreshold - attribute.min).toFloat()
 		val roll = Random.nextFloat()
-		if (roll < direness) {
+		if (roll > direness) {
 			// Uh oh, time to die, or not?
 			if (Random.nextInt(110) > this[AgentAttribute.ENDURANCE]) {
 				// Time to die.
@@ -54,13 +54,13 @@ class AgentNeedS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(AgentC::cla
 		return false
 	}
 
-	override fun process(entity: Int, delta: Float) {
+	override fun process(entity: Int) {
 		val agent = agentC[entity]
 
 		val attributes = agent.attributes
 		// Check if should die
 		val shouldDie = attributes.shouldDie(AgentAttribute.HEALTH, 10)
-				|| attributes.shouldDie(AgentAttribute.THIRST, -50)
+				|| attributes.shouldDie(AgentAttribute.THIRST, -20)
 				|| attributes.shouldDie(AgentAttribute.HUNGER, -50)
 
 		if (shouldDie) {

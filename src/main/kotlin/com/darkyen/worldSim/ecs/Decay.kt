@@ -17,11 +17,8 @@ class DecayS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(DecayC::class.j
 	@Wire
 	private lateinit var simulationClock : SimulationSpeed
 
-	override fun update(delta: Float) {
-		super.update(simulationClock.simulationDelta)
-	}
-
-	override fun process(entity: Int, delta: Float) {
+	override fun process(entity: Int) {
+		val delta = simulationClock.simulationDelta
 		val decay = decayC[entity]!!
 
 		decay.remainingTime -= delta

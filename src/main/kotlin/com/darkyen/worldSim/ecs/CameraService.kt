@@ -21,7 +21,7 @@ class CameraService : EngineService {
 
 	val lookAt = Rectangle()
 
-	override fun update(delta: Float) {
+	override fun update() {
 		val v = viewport
 		val lookAt = lookAt
 		val position = v.camera.position

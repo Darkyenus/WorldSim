@@ -23,15 +23,15 @@ class CameraTrackerS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(Positio
 	private val tmp = Rectangle()
 	private var firstEntity = true
 
-	override fun update(delta: Float) {
+	override fun update() {
 		firstEntity = true
-		super.update(delta)
+		super.update()
 		if (!firstEntity) {
 			camera.lookAt.set(thisFrameFraming)
 		}
 	}
 
-	override fun process(entity: Int, delta: Float) {
+	override fun process(entity: Int) {
 		val positionC = positionMapper[entity]
 		val cameraTrackerC = cameraTrackerMapper[entity]
 

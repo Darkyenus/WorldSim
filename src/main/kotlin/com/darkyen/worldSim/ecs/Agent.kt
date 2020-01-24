@@ -149,7 +149,11 @@ const val DAY_LENGTH_IN_REAL_SECONDS = 60f * 5f // 5 min = 1 day
 const val HOUR_LENGTH_IN_REAL_SECONDS = DAY_LENGTH_IN_REAL_SECONDS / 24f
 const val HOUR_LENGTH_IN_MS = (HOUR_LENGTH_IN_REAL_SECONDS * 1000).toInt()
 
-class AgentS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(PositionC::class.java, AgentC::class.java)) {
+private val AGENT_FAMILY = COMPONENT_DOMAIN.familyWith(PositionC::class.java, AgentC::class.java)
+
+class AgentSpatialLookup : SpatialLookupService(AGENT_FAMILY)
+
+class AgentS : FamilyWatcherSystem.Single(AGENT_FAMILY) {
 
 	@Wire
 	lateinit var world: World
@@ -165,6 +169,8 @@ class AgentS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(PositionC:
 	lateinit var pathFinder:PathFinder
 	@Wire
 	lateinit var speech:AgentSpeechS
+	@Wire
+	lateinit var agentSpatialLookup:AgentSpatialLookup
 
 	val coroutineManager = AICoroutineManager()
 
@@ -195,10 +201,9 @@ class AgentS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(PositionC:
 		}
 	}
 
-	override fun update(realDelta: Float) {
+	override fun update() {
+		super.update()
 		val delta = simulationClock.simulationDelta
-
-		super.update(delta)
 		dayProgressSec += delta
 		yearProgress += if (dayProgressSec >= DAY_LENGTH_IN_REAL_SECONDS) {
 			dayProgressSec -= DAY_LENGTH_IN_REAL_SECONDS
@@ -226,11 +231,11 @@ class AgentS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(PositionC:
 		}
 	}
 
-	override fun insertedEntity(entity: Int, delta: Float) {
+	override fun insertedEntity(entity: Int) {
 		coroutineManager.beginBrain(AIContext(entity, this, agentC[entity]!!, positionC[entity]!!))
 	}
 
-	override fun removedEntity(entity: Int, delta: Float) {
+	override fun removedEntity(entity: Int) {
 		coroutineManager.endBrain(entity)
 	}
 }

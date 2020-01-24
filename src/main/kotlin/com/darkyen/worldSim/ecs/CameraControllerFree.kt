@@ -1,5 +1,6 @@
 package com.darkyen.worldSim.ecs
 
+import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Vector2
@@ -45,7 +46,8 @@ class CameraControllerFree : EngineService, WorldSimGame.InputProcessorProvider 
 	private val maxZoomLevel = WORLD_SIZE
 	private var zoomLevel = 20
 
-	override fun update(delta: Float) {
+	override fun update() {
+		val delta = Gdx.graphics.deltaTime
 		val movement = movement.setZero()
 		val speed = zoomLevel / 3f
 		if (leftInput.isPressed) {

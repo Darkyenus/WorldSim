@@ -14,7 +14,6 @@ import com.darkyen.worldSim.ecs.MEMORY_CAPACITY
 import com.darkyen.worldSim.ecs.MEMORY_TYPES
 import com.darkyen.worldSim.ecs.MemoryType
 import com.darkyen.worldSim.ecs.PositionC
-import com.darkyen.worldSim.ecs.forChunksNear
 import com.darkyen.worldSim.ecs.get
 import com.darkyen.worldSim.ecs.say
 import com.darkyen.worldSim.ecs.set
@@ -23,7 +22,6 @@ import com.darkyen.worldSim.util.GdxIntArray
 import com.darkyen.worldSim.util.Vec2
 import com.darkyen.worldSim.util.anyPositionNearIs
 import com.darkyen.worldSim.util.directionTo
-import com.darkyen.worldSim.util.forEach
 import com.darkyen.worldSim.util.indexOfMax
 import kotlinx.coroutines.delay
 import java.util.*
@@ -232,23 +230,9 @@ const val AGENT_VISIBILITY_DISTANCE = 10
 private inline fun AIContext.forNearbyEntities(action:(mDistance:Int, entity:Int) -> Unit) {
 	val self = entity
 	val pos = position.pos
-	val world = agentS.world
-
-	val positionC = agentS.positionC
-
-	world.forChunksNear(pos, AGENT_VISIBILITY_DISTANCE) { chunk ->
-		chunk.entities.indices.forEach { entity ->
-			if (entity == self) {
-				return@forEach
-			}
-
-			val position = positionC[entity] ?: return@forEach
-			val dist = (position.pos - pos).manhLen
-			if (dist > AGENT_VISIBILITY_DISTANCE) {
-				return@forEach
-			}
-
-			action(dist, entity)
+	agentS.agentSpatialLookup.forEntitiesNear(pos, AGENT_VISIBILITY_DISTANCE) { entity, distance ->
+		if (entity != self) {
+			action(distance, entity)
 		}
 	}
 }

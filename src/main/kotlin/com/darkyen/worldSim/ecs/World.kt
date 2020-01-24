@@ -15,7 +15,6 @@ import com.darkyen.worldSim.util.GdxLongArray
 import com.darkyen.worldSim.util.Vec2
 import com.github.antag99.retinazer.Engine
 import com.github.antag99.retinazer.EngineService
-import com.github.antag99.retinazer.EntitySet
 import com.github.antag99.retinazer.Wire
 
 const val CHUNK_SIZE_SHIFT = 5
@@ -229,7 +228,7 @@ class World(
 		return true
 	}
 
-	override fun update(delta: Float) {
+	override fun update() {
 		val chunksToPopulate = chunksToPopulate
 		val engine = engine
 		for (i in 0 until chunksToPopulate.size) {
@@ -243,25 +242,6 @@ class World(
 		val tiles = Array(CHUNK_AREA) { Tile.WATER }
 		val features = arrayOfNulls<Feature>(CHUNK_AREA)
 		val items = arrayOfNulls<IntArray>(CHUNK_AREA)
-
-		/** Cache with IDs of entities in this chunk */
-		val entities = EntitySet()
-	}
-}
-
-inline fun World.forChunksNear(pos:Vec2, distance:Int, action:(World.Chunk) -> Unit) {
-	val centerX = pos.x
-	val centerY = pos.y
-
-	val firstChunkX = (centerX - distance) shr CHUNK_SIZE_SHIFT
-	val lastChunkX = (centerX + distance) shr CHUNK_SIZE_SHIFT
-	val firstChunkY = (centerY - distance) shr CHUNK_SIZE_SHIFT
-	val lastChunkY = (centerY + distance) shr CHUNK_SIZE_SHIFT
-	for (x in firstChunkX .. lastChunkX) {
-		for (y in firstChunkY .. lastChunkY) {
-			val chunk = getChunk(Vec2(x shl CHUNK_SIZE_SHIFT, y shl CHUNK_SIZE_SHIFT)) ?: continue
-			action(chunk)
-		}
 	}
 }
 
