@@ -229,12 +229,12 @@ class RenderS(var pixelsPerUnit: Int = 0) : EntitySystem(COMPONENT_DOMAIN.family
 
 	private val stepTimeData = GraphData(256, Color.RED, 0f, 0.1f, false)
 	private val memData = GraphData(256, Color.GREEN, 0f, 20000f, true)
-	private val chunkData = GraphData(256, Color.YELLOW, 0f, 5f, true)
+	private val entityCount = GraphData(256, Color.YELLOW, 0f, 1000f, true)
 
 	private val grapherPane = GrapherPane().apply {
 		graphs.add(stepTimeData)
 		graphs.add(memData)
-		graphs.add(chunkData)
+		graphs.add(entityCount)
 	}
 
 	private val debugTextLabel = Label("", Label.LabelStyle(WorldSim.debugFont, Color.WHITE))
@@ -243,8 +243,7 @@ class RenderS(var pixelsPerUnit: Int = 0) : EntitySystem(COMPONENT_DOMAIN.family
 		stepTimeData.addDataPoint(Gdx.graphics.rawDeltaTime)
 		val rt = Runtime.getRuntime()
 		memData.addDataPoint((rt.totalMemory() - rt.freeMemory()) / 1000f)
-		chunkData.addDataPoint(world.debugGeneratedChunks.toFloat())
-		world.debugGeneratedChunks = 0
+		entityCount.addDataPoint(engine.entities.size().toFloat())
 
 		val text = debugDrawText
 		text.clear()

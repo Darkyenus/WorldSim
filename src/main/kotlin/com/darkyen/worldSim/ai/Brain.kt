@@ -2,9 +2,11 @@ package com.darkyen.worldSim.ai
 
 import com.darkyen.worldSim.FOOD_SOURCES
 import com.darkyen.worldSim.FeatureAspect
+import com.darkyen.worldSim.Item
 import com.darkyen.worldSim.TileType
 import com.darkyen.worldSim.ecs.AgentActivity
 import com.darkyen.worldSim.ecs.AgentAttribute.*
+import com.darkyen.worldSim.ecs.HOUR_LENGTH_IN_MS
 import com.darkyen.worldSim.ecs.get
 import com.darkyen.worldSim.util.DIRECTIONS
 import com.darkyen.worldSim.util.Vec2
@@ -14,14 +16,19 @@ import kotlin.math.abs
 import kotlin.random.Random
 
 suspend fun AIContext.brain() {
-	if (!takeCareOfBasicNeeds(40)) {
+	if (!takeCareOfBasicNeeds(20)) {
 		// Not met, time to panic...
 		increaseAlert(10)
 		if (agent.misfire()) {
 			// PANIC
 			panic()
 		}
+
+		delay(1000)
+		return
 	}
+
+	stockUpOnMaterials()
 
 	delay(1000)
 }
@@ -78,6 +85,20 @@ enum class Seekable(val goNearOnly:Boolean) {
 			val features = context.agentS.world.getFeature(pos) ?: return false
 			val aspects = features.aspects
 			return FeatureAspect.WOOD_SOURCE in aspects
+		}
+	},
+	CRAFTING_MATERIAL(false) {
+		override fun acceptable(context:AIContext,pos: Vec2): Boolean {
+			val features = context.agentS.world.getFeature(pos) ?: return false
+			val aspects = features.aspects
+			return FeatureAspect.CRAFTING_MATERIAL_SOURCE in aspects
+		}
+	},
+	STONE(false) {
+		override fun acceptable(context:AIContext,pos: Vec2): Boolean {
+			val features = context.agentS.world.getFeature(pos) ?: return false
+			val aspects = features.aspects
+			return FeatureAspect.STONE_SOURCE in aspects
 		}
 	}
 	;
@@ -151,6 +172,10 @@ private suspend fun AIContext.seekFood():Boolean {
 		return true
 	}
 
+	return obtainFood() && eatFromInventory()
+}
+
+private suspend fun AIContext.obtainFood():Boolean {
 	// Look for food at home
 	// TODO
 
@@ -205,5 +230,56 @@ private suspend fun AIContext.seekSocial():Boolean {
 private suspend fun AIContext.panic() {
 	for (i in 0 until 10) {
 		walkTo(position() + Vec2(Random.nextInt(-5, 6), Random.nextInt(-5, 6)), activity = AgentActivity.PANICKING)
+	}
+}
+
+private suspend fun AIContext.gatherMaterialsAndCraftItem(item:Item):Boolean {
+	val requiredMaterialCount = item.craftMaterialRequirement
+	assert(requiredMaterialCount > 0)
+	val missingCraftingMaterials = requiredMaterialCount - inventoryCount(Item.CRAFTING_MATERIAL)
+	for (i in 0 until missingCraftingMaterials) {
+		if (!obtainCraftMaterial()) {
+			return false
+		}
+	}
+
+	return craftItem(item)
+}
+
+private suspend fun AIContext.obtainCraftMaterial():Boolean {
+	return seek(Seekable.CRAFTING_MATERIAL, HOUR_LENGTH_IN_MS * 4L)
+			&& gatherCraftingResourcesFromEnvironment()
+}
+
+private suspend fun AIContext.obtainWood():Boolean {
+	return seek(Seekable.WOOD, HOUR_LENGTH_IN_MS * 4L)
+			&& gatherWoodFromEnvironment()
+}
+
+private suspend fun AIContext.obtainStone():Boolean {
+	return seek(Seekable.STONE, HOUR_LENGTH_IN_MS * 4L)
+			&& gatherStoneFromEnvironment()
+}
+
+private suspend fun AIContext.stockUpOnMaterials() {
+	// Gather more food
+	if (inventoryCount(Item.FOOD) < 3) {
+		obtainFood()
+	}
+
+	// Refill canteens
+	if (inventoryCount(Item.WATER_CANTEEN_EMPTY) > 0) {
+		if (seek(Seekable.WATER, 20_000)) {
+			while (inventoryCount(Item.WATER_CANTEEN_EMPTY) > 0) {
+				if (!refillCanteen()) {
+					break
+				}
+			}
+		}
+	}
+
+	// Craft canteens
+	if (inventoryCount(Item.WATER_CANTEEN_EMPTY) + inventoryCount(Item.WATER_CANTEEN_FULL) < 1) {
+		gatherMaterialsAndCraftItem(Item.WATER_CANTEEN_EMPTY)
 	}
 }

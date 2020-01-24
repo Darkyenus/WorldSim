@@ -74,7 +74,6 @@ class World(
 
 	private val chunks = LongMap<Chunk>()
 	private val chunksToPopulate = GdxLongArray()
-	var debugGeneratedChunks = 0
 
 	/**
 	 * Returns chunk at requested coordinates.
@@ -105,7 +104,6 @@ class World(
 					result = Chunk()
 					generator.generateChunk(this, result, Vec2(chunkKey))
 					chunks.put(chunkKey, result)
-					debugGeneratedChunks += 1
 					chunksToPopulate.add(chunkKey)
 				}
 			}

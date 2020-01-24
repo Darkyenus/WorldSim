@@ -64,6 +64,11 @@ enum class AgentActivity(val sprite:Int, val canListen:Boolean = false) {
 	HUNTING(91),
 	PANICKING(92),
 	TALKING(93, canListen = true),
+	REFILLING_CANTEEN(100, canListen = true),
+	GATHERING_CRAFTING_MATERIAL(96, canListen = true),
+	GATHERING_WOOD(97, canListen = true),
+	GATHERING_STONE(98, canListen = true),
+	CRAFTING(99, canListen = true),
 }
 
 enum class AgentAttribute(
@@ -118,6 +123,7 @@ const val MATURITY_AGE_YEAR = 16
 
 const val DAY_LENGTH_IN_REAL_SECONDS = 60f * 5f // 5 min = 1 day
 const val HOUR_LENGTH_IN_REAL_SECONDS = DAY_LENGTH_IN_REAL_SECONDS / 24f
+const val HOUR_LENGTH_IN_MS = (HOUR_LENGTH_IN_REAL_SECONDS * 1000).toInt()
 
 class AgentS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(PositionC::class.java, AgentC::class.java)) {
 

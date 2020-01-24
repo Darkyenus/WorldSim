@@ -5,6 +5,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToLong
 
@@ -24,10 +25,11 @@ class AICoroutineManager {
 		brainJobs[context.entity] = brainJob
 		val brain = context.agent.brain
 		coroutineScope.launch(brainJob, CoroutineStart.DEFAULT) {
-			with(context) {
-				loop {
+			loop {
+				with(context) {
 					brain()
 				}
+				delay(100)
 			}
 		}
 	}

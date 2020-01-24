@@ -70,16 +70,16 @@ class NoiseWorldGenerator(seed:Long = System.currentTimeMillis()) : WorldGenerat
 	enum class Biome(vararg items: Weighted<Feature?>) {
 		TROPICAL_RAINFOREST(Weighted(Feature.DECIDUOUS_FRUIT_FOREST, 1f), Weighted(Feature.DECIDUOUS_FOREST, 4f), Weighted(null, 8f)),
 		TROPICAL_SEASONAL_FOREST(Weighted(Feature.DECIDUOUS_FRUIT_FOREST, 1f), Weighted(Feature.DECIDUOUS_FOREST, 4f), Weighted(null, 4f)),
-		SAVANNA(Weighted(Feature.DECIDUOUS_FOREST, 1f), Weighted(Feature.BERRY_BUSHES, 1f), Weighted(Feature.BUSHES, 4f), Weighted(null, 50f)),
-		SUBTROPICAL_DESERT(Weighted(Feature.BUSHES, 1f), Weighted(null, 100f)),
+		SAVANNA(Weighted(Feature.DECIDUOUS_FOREST, 1f), Weighted(Feature.BERRY_BUSHES, 1f), Weighted(Feature.BUSHES, 4f), Weighted(Feature.STONES_SMALL, 0.2f), Weighted(null, 50f)),
+		SUBTROPICAL_DESERT(Weighted(Feature.BUSHES, 1f), Weighted(Feature.STONES_SMALL, 0.2f), Weighted(Feature.STONES_LARGE, 0.1f), Weighted(null, 100f)),
 		TEMPERATE_GRASSLAND(Weighted(Feature.DECIDUOUS_FOREST, 1f), Weighted(Feature.BUSHES, 2f), Weighted(null, 10f)),
-		COLD_DESERT(Weighted(Feature.BUSHES, 1f), Weighted(null, 30f)),
+		COLD_DESERT(Weighted(Feature.BUSHES, 1f), Weighted(Feature.STONES_SMALL, 0.1f), Weighted(null, 30f)),
 		WOODLAND(Weighted(Feature.DECIDUOUS_FOREST, 5f), Weighted(Feature.DECIDUOUS_FRUIT_FOREST, 1f), Weighted(null, 15f)),
 		SHRUBLAND(Weighted(Feature.BERRY_BUSHES, 1f), Weighted(Feature.BUSHES, 2f), Weighted(null, 20f)),
 		TEMPERATE_SEASONAL_FOREST(Weighted(Feature.DECIDUOUS_FOREST_DEEP, 3f), Weighted(Feature.DECIDUOUS_FOREST, 3f), Weighted(Feature.DECIDUOUS_FRUIT_FOREST, 0.5f), Weighted(null, 6f)),
 		TEMPERATE_RAINFOREST(Weighted(Feature.DECIDUOUS_FOREST_DEEP, 3f), Weighted(Feature.DECIDUOUS_FOREST, 2f), Weighted(Feature.DECIDUOUS_FRUIT_FOREST, 0.8f), Weighted(null, 2f)),
-		BOREAL_FOREST(Weighted(Feature.CONIFEROUS_FOREST_DEEP, 5f), Weighted(Feature.CONIFEROUS_FOREST, 1f), Weighted(null, 4f)),
-		TUNDRA(Weighted(Feature.CONIFEROUS_FOREST_DEEP, 3f), Weighted(Feature.CONIFEROUS_FOREST, 3f), Weighted(null, 20f));
+		BOREAL_FOREST(Weighted(Feature.CONIFEROUS_FOREST_DEEP, 5f), Weighted(Feature.CONIFEROUS_FOREST, 1f), Weighted(Feature.STONES_LARGE, 0.2f), Weighted(null, 4f)),
+		TUNDRA(Weighted(Feature.CONIFEROUS_FOREST_DEEP, 3f), Weighted(Feature.CONIFEROUS_FOREST, 3f), Weighted(Feature.STONES_SMALL, 0.2f), Weighted(Feature.STONES_LARGE, 0.1f), Weighted(null, 20f));
 
 		private val sampler = WeightedSampler(*items)
 

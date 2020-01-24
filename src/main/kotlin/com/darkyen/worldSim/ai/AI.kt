@@ -253,10 +253,10 @@ suspend fun AIContext.eatFromInventory():Boolean {
 }
 
 suspend fun AIContext.drinkFromInventory():Boolean {
-	val foodAmount = agent.inventory[Item.WATER_CONTAINER_FULL.ordinal]
+	val foodAmount = agent.inventory[Item.WATER_CANTEEN_FULL.ordinal]
 	if (foodAmount > 0) {
-		agent.inventory[Item.WATER_CONTAINER_FULL.ordinal] -= 1
-		agent.inventory[Item.WATER_CONTAINER_EMPTY.ordinal] += 1
+		agent.inventory[Item.WATER_CANTEEN_FULL.ordinal] -= 1
+		agent.inventory[Item.WATER_CANTEEN_EMPTY.ordinal] += 1
 		// Eat
 		agent.attributes[AgentAttribute.THIRST] = agent.attributes[AgentAttribute.THIRST] + THIRST_POINTS_PER_DRINK_CONTAINER
 
@@ -280,6 +280,73 @@ suspend fun AIContext.drinkFromEnvironment():Boolean {
 	return true
 }
 
+suspend fun AIContext.refillCanteen():Boolean {
+	val world = agentS.world
+	val waterNearby = anyPositionNearIs(position.pos) { pos -> world.getTile(pos).type == TileType.WATER }
+	if (!waterNearby) {
+		return false
+	}
+
+	val inventory = agent.inventory
+	if (inventory[Item.WATER_CANTEEN_EMPTY.ordinal] <= 0) {
+		return false
+	}
+
+	// Refill
+	doActivityDelay(AgentActivity.REFILLING_CANTEEN, REFILL_CANTEEN_DURATION_MS) { time ->
+		if (time >= REFILL_CANTEEN_DURATION_MS) {
+			inventory[Item.WATER_CANTEEN_EMPTY.ordinal]--
+			inventory[Item.WATER_CANTEEN_FULL.ordinal]++
+		}
+	}
+	return true
+}
+
+suspend fun AIContext.gatherCraftingResourcesFromEnvironment():Boolean {
+	val tileFeatures = agentS.world.getFeature(position.pos) ?: return false
+	val aspects = tileFeatures.aspects
+	if (FeatureAspect.CRAFTING_MATERIAL_SOURCE in aspects) {
+		doActivityDelay(AgentActivity.GATHERING_CRAFTING_MATERIAL, GATHERING_CRAFTING_MATERIAL_DURATION_MS) {
+			if (it >= GATHERING_CRAFTING_MATERIAL_DURATION_MS) {
+				agent.inventory[Item.CRAFTING_MATERIAL.ordinal]++
+			}
+		}
+		return true
+	}
+
+	return false
+}
+
+suspend fun AIContext.gatherWoodFromEnvironment():Boolean {
+	val tileFeatures = agentS.world.getFeature(position.pos) ?: return false
+	val aspects = tileFeatures.aspects
+	if (FeatureAspect.WOOD_SOURCE in aspects) {
+		doActivityDelay(AgentActivity.GATHERING_WOOD, GATHERING_WOOD_DURATION_MS) {
+			if (it >= GATHERING_WOOD_DURATION_MS) {
+				agent.inventory[Item.WOOD.ordinal]++
+			}
+		}
+		return true
+	}
+
+	return false
+}
+
+suspend fun AIContext.gatherStoneFromEnvironment():Boolean {
+	val tileFeatures = agentS.world.getFeature(position.pos) ?: return false
+	val aspects = tileFeatures.aspects
+	if (FeatureAspect.STONE_SOURCE in aspects) {
+		doActivityDelay(AgentActivity.GATHERING_STONE, GATHERING_STONE_DURATION_MS) {
+			if (it >= GATHERING_STONE_DURATION_MS) {
+				agent.inventory[Item.STONE.ordinal]++
+			}
+		}
+		return true
+	}
+
+	return false
+}
+
 suspend fun AIContext.gatherFoodFromEnvironment():Boolean {
 	val pos = position.pos
 	val world = agentS.world
@@ -290,7 +357,7 @@ suspend fun AIContext.gatherFoodFromEnvironment():Boolean {
 		doActivityDelay(AgentActivity.GATHERING_FRUIT, GATHERING_DURATION_MS) {
 			if (it >= GATHERING_DURATION_MS) {
 				agent.inventory[Item.FOOD.ordinal]++
-			} else println("interrupted gathering") //TODO
+			}
 		}
 		return true
 	}
@@ -299,17 +366,17 @@ suspend fun AIContext.gatherFoodFromEnvironment():Boolean {
 		doActivityDelay(AgentActivity.GATHERING_MUSHROOMS, GATHERING_DURATION_MS) {
 			if (it >= GATHERING_DURATION_MS) {
 				agent.inventory[Item.FOOD.ordinal]++
-			} else println("interrupted gathering") //TODO
+			}
 		}
 		return true
 	}
 
-	if (FeatureAspect.FOOD_SOURCE_WILD_ANIMALS in aspects) {
+	if (!agent.isBaby && FeatureAspect.FOOD_SOURCE_WILD_ANIMALS in aspects) {
 		// TODO(jp): Skill check
 		doActivityDelay(AgentActivity.HUNTING, HUNTING_DURATION_MS) {
 			if (it >= HUNTING_DURATION_MS) {
 				agent.inventory[Item.FOOD.ordinal] += 7
-			} else println("interrupted hunting") //TODO
+			}
 		}
 		return true
 	}
@@ -319,7 +386,7 @@ suspend fun AIContext.gatherFoodFromEnvironment():Boolean {
 		doActivityDelay(AgentActivity.HUNTING, HUNTING_SMALL_DURATION_MS) {
 			if (it >= HUNTING_SMALL_DURATION_MS) {
 				agent.inventory[Item.FOOD.ordinal] += 5
-			} else println("interrupted hunting") //TODO
+			}
 		}
 		return true
 	}
@@ -339,13 +406,12 @@ suspend fun AIContext.sleep() {
 
 suspend fun AIContext.talkWith(entity:Int):Boolean {
 	// TODO somehow engage the other entity into this?
-	val myPos = position.pos
 	val otherAgentC = agentS.agentC[entity] ?: return false
 	if (!otherAgentC.activity.canListen) {
 		return false
 	}
 	val otherPositionC = agentS.positionC[entity] ?: return false
-	if ((myPos - otherPositionC.pos).manhLen != 1) {
+	if ((position.pos - otherPositionC.pos).manhLen != 1) {
 		return false
 	}
 
@@ -357,6 +423,28 @@ suspend fun AIContext.talkWith(entity:Int):Boolean {
 	return true
 }
 
+suspend fun AIContext.craftItem(item:Item):Boolean {
+	val craftMaterialRequirement = item.craftMaterialRequirement
+	if (craftMaterialRequirement < 0) {
+		return false
+	}
+
+	if (agent.inventory[Item.CRAFTING_MATERIAL.ordinal] < craftMaterialRequirement) {
+		return false
+	}
+
+	val duration = craftMaterialRequirement * CRAFTING_DURATION_MS_PER_MATERIAL
+
+	doActivityDelay(AgentActivity.CRAFTING, duration) { time ->
+		if (time >= duration) {
+			agent.inventory[Item.CRAFTING_MATERIAL.ordinal] -= craftMaterialRequirement
+			agent.inventory[item.ordinal]++
+			return true
+		}
+	}
+	return false
+}
+
 const val MAX_LOOK_DISTANCE = 4
 
 const val HUNGER_POINTS_PER_FOOD = 50
@@ -365,9 +453,14 @@ const val THIRST_POINTS_PER_DRINK_CONTAINER = 50
 const val FOOD_EAT_TIME_MS = 5000L
 const val DRINK_DURATION_MS = 3000L
 const val ENVIRONMENT_DRINK_DURATION_MS = 5000L
+const val REFILL_CANTEEN_DURATION_MS = 2000L
 const val SLEEP_DURATION_MS_PER_POINT = 1800L
 const val TALK_DURATION_MS_PER_POINT = 1000L
 
 const val GATHERING_DURATION_MS = 5000L
 const val HUNTING_DURATION_MS = 20_000L
 const val HUNTING_SMALL_DURATION_MS = 15_000L
+const val GATHERING_CRAFTING_MATERIAL_DURATION_MS = 10_000L
+const val GATHERING_WOOD_DURATION_MS = 20_000L
+const val GATHERING_STONE_DURATION_MS = 40_000L
+const val CRAFTING_DURATION_MS_PER_MATERIAL = 2_000L

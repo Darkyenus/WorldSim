@@ -28,12 +28,34 @@ class AgentNeedS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(AgentC::cla
 		this[attribute] = this[attribute] + change
 	}
 
+	private fun ByteArray.shouldDie(attribute:AgentAttribute, deathThreshold:Byte):Boolean {
+		val value = this[attribute]
+		if (value >= deathThreshold) {
+			return false
+		}
+		val direness = (value - attribute.min) / (deathThreshold - attribute.min).toFloat()
+		val roll = Random.nextFloat()
+		if (roll < direness) {
+			// Uh oh, time to die, or not?
+			if (Random.nextInt(110) > this[AgentAttribute.ENDURANCE]) {
+				// Time to die.
+				return true
+			}
+		}
+		return false
+	}
+
 	override fun process(entity: Int, delta: Float) {
 		val agent = agent[entity]
 
-		val activity = agent.activity
-
 		val attributes = agent.attributes
+		// Check if should die
+		val shouldDie = attributes.shouldDie(AgentAttribute.HEALTH, 10)
+				|| attributes.shouldDie(AgentAttribute.THIRST, -50)
+				|| attributes.shouldDie(AgentAttribute.HUNGER, -50)
+
+
+		val activity = agent.activity
 		attributes.update(AgentAttribute.HEALTH, if (activity == AgentActivity.SLEEPING) HEALTH_TENDENCY_SLEEP else HEALTH_TENDENCY)
 		attributes.update(AgentAttribute.THIRST, if (activity == AgentActivity.DRINKING) 0f else THIRST_TENDENCY)
 		attributes.update(AgentAttribute.HUNGER, if (activity == AgentActivity.EATING) 0f else if (activity == AgentActivity.WALKING || activity == AgentActivity.PANICKING) HUNGER_TENDENCY_WALKING else HUNGER_TENDENCY)
