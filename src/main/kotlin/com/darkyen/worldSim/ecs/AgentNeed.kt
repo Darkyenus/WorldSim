@@ -1,5 +1,6 @@
 package com.darkyen.worldSim.ecs
 
+import com.darkyen.worldSim.SimulationSpeedRegulator
 import com.github.antag99.retinazer.Mapper
 import com.github.antag99.retinazer.Wire
 import com.github.antag99.retinazer.systems.EntityProcessorSystem
@@ -19,14 +20,15 @@ class AgentNeedS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(AgentC::cla
 	@Wire
 	private lateinit var positionC : Mapper<PositionC>
 	@Wire
-	private lateinit var simulationClock : SimulationSpeed
+	private lateinit var simulationClock : SimulationSpeedRegulator
 
 	private var dayProgress = 0f
 
 	override fun update() {
 		val delta = simulationClock.simulationDelta
 		dayProgress += delta
-		while (dayProgress >= HOUR_LENGTH_IN_REAL_SECONDS) {
+		// Do not call multiple times per update (it shouldn't happen anyway), because ECS can't handle it
+		if (dayProgress >= HOUR_LENGTH_IN_REAL_SECONDS) {
 			dayProgress -= HOUR_LENGTH_IN_REAL_SECONDS
 			super.update()
 		}
@@ -68,7 +70,7 @@ class AgentNeedS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(AgentC::cla
 			agentC.remove(entity)
 			positionC[entity].speed = 0f
 			renderC[entity].sprite = 103
-			decayC.add(entity, DecayC(300_000f))
+			decayC.add(entity, DecayC(300f))
 			return
 		}
 

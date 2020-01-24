@@ -3,6 +3,7 @@ package com.darkyen.worldSim.ecs
 import com.badlogic.gdx.math.MathUtils
 import com.darkyen.worldSim.EntityChunkPopulator
 import com.darkyen.worldSim.ITEMS
+import com.darkyen.worldSim.SimulationSpeedRegulator
 import com.darkyen.worldSim.ai.AIBrain
 import com.darkyen.worldSim.ai.AIContext
 import com.darkyen.worldSim.ai.AICoroutineManager
@@ -158,7 +159,7 @@ class AgentS : FamilyWatcherSystem.Single(AGENT_FAMILY) {
 	@Wire
 	lateinit var world: World
 	@Wire
-	private lateinit var simulationClock : SimulationSpeed
+	private lateinit var simulationClock : SimulationSpeedRegulator
 	@Wire
 	lateinit var positionC: Mapper<PositionC>
 	@Wire

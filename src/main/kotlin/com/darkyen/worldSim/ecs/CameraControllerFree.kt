@@ -1,18 +1,17 @@
 package com.darkyen.worldSim.ecs
 
-import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Vector2
+import com.darkyen.worldSim.RenderService
 import com.darkyen.worldSim.WorldSimGame
 import com.darkyen.worldSim.input.GameInput
-import com.github.antag99.retinazer.EngineService
 import com.github.antag99.retinazer.Wire
 
 /**
  *
  */
-class CameraControllerFree : EngineService, WorldSimGame.InputProcessorProvider {
+class CameraControllerFree : RenderService, WorldSimGame.InputProcessorProvider {
 
 	private val upInput = GameInput.function("Move Up", GameInput.Binding.bindKeyboard(Input.Keys.W))
 	private val downInput = GameInput.function("Move Down", GameInput.Binding.bindKeyboard(Input.Keys.S))
@@ -46,8 +45,7 @@ class CameraControllerFree : EngineService, WorldSimGame.InputProcessorProvider 
 	private val maxZoomLevel = WORLD_SIZE
 	private var zoomLevel = 20
 
-	override fun update() {
-		val delta = Gdx.graphics.deltaTime
+	override fun renderUpdate(delta: Float) {
 		val movement = movement.setZero()
 		val speed = zoomLevel / 3f
 		if (leftInput.isPressed) {

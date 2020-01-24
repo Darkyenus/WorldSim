@@ -4,12 +4,13 @@ import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.math.Rectangle
 import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.utils.viewport.ExtendViewport
+import com.darkyen.worldSim.RenderService
 import com.github.antag99.retinazer.EngineService
 
 /**
  *
  */
-class CameraService : EngineService {
+class CameraService : RenderService {
 
 	val viewport = ExtendViewport(1f, 1f).apply { //arbitrary
 		val camera = camera
@@ -21,7 +22,7 @@ class CameraService : EngineService {
 
 	val lookAt = Rectangle()
 
-	override fun update() {
+	override fun renderUpdate(delta: Float) {
 		val v = viewport
 		val lookAt = lookAt
 		val position = v.camera.position

@@ -10,6 +10,8 @@ import com.badlogic.gdx.math.Vector2
 import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
+import com.darkyen.worldSim.RenderService
+import com.darkyen.worldSim.SimulationSpeedRegulator
 import com.darkyen.worldSim.WorldSim
 import com.darkyen.worldSim.WorldSimGame
 import com.darkyen.worldSim.input.GameInput
@@ -34,7 +36,7 @@ private val RENDER_FAMILY = COMPONENT_DOMAIN.familyWith(PositionC::class.java, R
 
 class RenderSpatialLookup : SpatialLookupService(RENDER_FAMILY)
 
-class RenderS : EntitySystem(RENDER_FAMILY), WorldSimGame.UILayerProvider, WorldSimGame.InputProcessorProvider {
+class RenderS : EntitySystem(RENDER_FAMILY), RenderService, WorldSimGame.UILayerProvider, WorldSimGame.InputProcessorProvider {
 
 	private var debugDrawEnabled = false
 		set(value) {
@@ -46,7 +48,7 @@ class RenderS : EntitySystem(RENDER_FAMILY), WorldSimGame.UILayerProvider, World
 	@Wire
 	private lateinit var world: World
 	@Wire
-	private lateinit var simulationClock : SimulationSpeed
+	private lateinit var simulationClock : SimulationSpeedRegulator
 	@Wire
 	private lateinit var position: Mapper<PositionC>
 	@Wire
@@ -67,7 +69,7 @@ class RenderS : EntitySystem(RENDER_FAMILY), WorldSimGame.UILayerProvider, World
 	private val debugDrawText = Text()
 	private val frustum = Rectangle()
 
-	override fun update() {
+	override fun renderUpdate(delta: Float) {
 		if (debugDrawEnabled) {
 			updateDebugDrawing()
 		}

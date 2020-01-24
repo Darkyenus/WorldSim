@@ -6,6 +6,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label
 import com.badlogic.gdx.scenes.scene2d.ui.Table
 import com.badlogic.gdx.utils.Align
 import com.darkyen.worldSim.ITEMS
+import com.darkyen.worldSim.RenderService
 import com.darkyen.worldSim.WorldSim
 import com.darkyen.worldSim.WorldSimGame
 import com.darkyen.worldSim.util.Vec2
@@ -17,7 +18,7 @@ import kotlin.math.roundToInt
 /**
  *
  */
-class AgentDetailUI : EngineService, WorldSimGame.UILayerProvider {
+class AgentDetailUI : RenderService, WorldSimGame.UILayerProvider {
 
 	@Wire
 	private lateinit var camera:CameraService
@@ -31,7 +32,7 @@ class AgentDetailUI : EngineService, WorldSimGame.UILayerProvider {
 
 	private val selectDistance = 1
 
-	override fun update() {
+	override fun renderUpdate(delta: Float) {
 		val pointingAt = camera.unproject(Gdx.input.x, Gdx.input.y)
 
 		var nearestEntity = -1

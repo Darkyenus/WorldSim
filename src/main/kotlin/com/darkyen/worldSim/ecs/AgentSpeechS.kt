@@ -1,5 +1,6 @@
 package com.darkyen.worldSim.ecs
 
+import com.darkyen.worldSim.SimulationSpeedRegulator
 import com.darkyen.worldSim.ai.AIContext
 import com.darkyen.worldSim.ai.doActivityDelay
 import com.darkyen.worldSim.util.Vec2
@@ -25,7 +26,7 @@ class AgentSpeechS : EntitySystem(COMPONENT_DOMAIN.familyWith(PositionC::class.j
 	@Wire
 	lateinit var world: World
 	@Wire
-	private lateinit var simulationClock : SimulationSpeed
+	private lateinit var simulationClock : SimulationSpeedRegulator
 	@Wire
 	lateinit var positionC: Mapper<PositionC>
 	@Wire

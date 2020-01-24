@@ -1,6 +1,7 @@
 package com.darkyen.worldSim.ecs
 
 import com.badlogic.gdx.math.Vector2
+import com.darkyen.worldSim.SimulationSpeedRegulator
 import com.darkyen.worldSim.util.Direction
 import com.darkyen.worldSim.util.Vec2
 import com.github.antag99.retinazer.Component
@@ -38,7 +39,7 @@ class PositionS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(PositionC::c
 	@Wire
 	private lateinit var agentS: AgentS
 	@Wire
-	private lateinit var simulationClock : SimulationSpeed
+	private lateinit var simulationClock : SimulationSpeedRegulator
 	@Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
 	@Wire
 	private lateinit var spatialLookupServices : java.util.List<SpatialLookupService>

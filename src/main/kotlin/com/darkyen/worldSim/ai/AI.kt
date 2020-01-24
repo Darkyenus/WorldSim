@@ -482,7 +482,7 @@ suspend fun AIContext.craftItem(item:Item):Boolean {
 	return true
 }
 
-const val MAX_LOOK_DISTANCE = 4
+const val MAX_LOOK_DISTANCE = 8
 
 const val HUNGER_POINTS_PER_FOOD = 50
 const val THIRST_POINTS_PER_DRINK_CONTAINER = 50

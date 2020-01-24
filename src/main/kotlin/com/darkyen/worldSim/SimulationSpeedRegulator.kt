@@ -1,20 +1,20 @@
-package com.darkyen.worldSim.ecs
+package com.darkyen.worldSim
 
-import com.badlogic.gdx.Gdx
 import com.badlogic.gdx.Input
 import com.badlogic.gdx.math.MathUtils
-import com.darkyen.worldSim.WorldSimGame
 import com.darkyen.worldSim.input.GameInput
-import com.github.antag99.retinazer.EngineService
+import com.github.antag99.retinazer.Engine
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 /**
- *
+ * Implements simulation speed control and updates the [Engine] - taking care to not supply time-steps that are too large.
  */
-class SimulationSpeed : EngineService, WorldSimGame.InputProcessorProvider {
+class SimulationSpeedRegulator : WorldSimGame.InputProcessorProvider {
 
 	private var baseMultiplier = 1f
 		set(value) {
-			field = MathUtils.clamp(value, 1f, 100f)
+			field = MathUtils.clamp(value, 1f, 1024f)
 		}
 
 	val multiplier:Float
@@ -25,13 +25,13 @@ class SimulationSpeed : EngineService, WorldSimGame.InputProcessorProvider {
 
 	private val faster = GameInput.function("Simulation faster", GameInput.Binding.bindKeyboard(Input.Keys.UP)).listen { times, pressed ->
 		if (pressed) {
-			baseMultiplier += times
+			baseMultiplier *= 2f
 			true
 		} else false
 	}
 	private val slower = GameInput.function("Simulation slower", GameInput.Binding.bindKeyboard(Input.Keys.DOWN)).listen { times, pressed ->
 		if (pressed) {
-			baseMultiplier -= times
+			baseMultiplier /= 2f
 			true
 		} else false
 	}
@@ -39,8 +39,16 @@ class SimulationSpeed : EngineService, WorldSimGame.InputProcessorProvider {
 
 	override val inputProcessor = GameInput(faster, slower, paused)
 
-	override fun update() {
-		val delta = Gdx.graphics.deltaTime
-		simulationDelta = delta * multiplier
+	private val MAX_MS = 50
+
+	fun updateForDelta(delta:Float, engine: Engine) {
+		val fullSimulationDelta = delta * multiplier
+		var simulateMs = (fullSimulationDelta * 1000).roundToInt()
+		while (simulateMs > 0) {
+			val step = min(simulateMs, MAX_MS)
+			simulateMs -= step
+			simulationDelta = step / 1000f
+			engine.update()
+		}
 	}
 }

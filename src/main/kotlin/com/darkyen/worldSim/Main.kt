@@ -56,7 +56,7 @@ val ARGS = ObjectMap<String, String?>()
 
 fun main(args: Array<String>) {
 	val c = Lwjgl3ApplicationConfiguration()
-	c.setTitle("Everycia")
+	c.setTitle("World Sim")
 	c.useVsync(true)
 	c.setResizable(true)
 	c.setWindowedMode(800, 600)

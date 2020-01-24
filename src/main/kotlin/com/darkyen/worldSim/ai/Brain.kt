@@ -15,6 +15,7 @@ import com.darkyen.worldSim.util.Vec2
 import com.darkyen.worldSim.util.find
 import kotlinx.coroutines.delay
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.random.Random
 
 suspend fun AIContext.brain() {
@@ -38,10 +39,10 @@ suspend fun AIContext.brain() {
 private suspend fun AIContext.takeCareOfBasicNeeds(howMuch:Byte):Boolean {
 	// Find the most pressing problem
 	val attributes = attributes()
-	val waterNeed = attributes[THIRST].toInt()
-	val foodNeed = attributes[HUNGER].toInt()
+	val waterNeed = attributes[THIRST].toInt() - 30
+	val foodNeed = attributes[HUNGER].toInt() - 20
 	val sleepNeed = attributes[SLEEP].toInt()
-	val socialNeed = attributes[SOCIAL] + 50 - attributes[EXTROVERSION]
+	val socialNeed = max(attributes[SOCIAL] + 50 - attributes[EXTROVERSION] / 2, 30)
 
 	if (waterNeed < howMuch && foodNeed < howMuch && sleepNeed < howMuch && socialNeed < howMuch) {
 		return true

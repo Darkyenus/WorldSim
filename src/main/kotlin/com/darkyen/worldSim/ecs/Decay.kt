@@ -1,5 +1,6 @@
 package com.darkyen.worldSim.ecs
 
+import com.darkyen.worldSim.SimulationSpeedRegulator
 import com.github.antag99.retinazer.Component
 import com.github.antag99.retinazer.Mapper
 import com.github.antag99.retinazer.Wire
@@ -15,7 +16,7 @@ class DecayS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(DecayC::class.j
 	@Wire
 	private lateinit var decayC: Mapper<DecayC>
 	@Wire
-	private lateinit var simulationClock : SimulationSpeed
+	private lateinit var simulationClock : SimulationSpeedRegulator
 
 	override fun process(entity: Int) {
 		val delta = simulationClock.simulationDelta
