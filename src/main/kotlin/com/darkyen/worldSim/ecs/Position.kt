@@ -5,9 +5,11 @@ import com.darkyen.worldSim.util.Direction
 import com.darkyen.worldSim.util.Vec2
 import com.darkyen.worldSim.util.forEach
 import com.github.antag99.retinazer.Component
+import com.github.antag99.retinazer.EntitySet
 import com.github.antag99.retinazer.Mapper
 import com.github.antag99.retinazer.Wire
 import com.github.antag99.retinazer.systems.FamilyWatcherSystem
+import com.github.antag99.retinazer.util.Bag
 import kotlin.math.min
 
 /** Position component. */
@@ -32,7 +34,7 @@ class PositionC : Component {
 }
 
 /** Position system. Moves [PositionC]omponents and updates [World.Chunk.entities]. */
-class PositionS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(PositionC::class.java)) {
+class PositionS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(PositionC::class.java, AgentC::class.java)) {
 
 	@Wire
 	private lateinit var positionMapper: Mapper<PositionC>
@@ -40,8 +42,13 @@ class PositionS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(Positio
 	private lateinit var agentS: AgentS
 	@Wire
 	private lateinit var world: World
+	@Wire
+	private lateinit var simulationClock : SimulationSpeed
 
-	override fun update(delta: Float) {
+	private val entityChunkEntities = Bag<EntitySet?>()
+
+	override fun update(realDelta: Float) {
+		val delta = simulationClock.simulationDelta
 		super.update(delta)
 		val world = world
 		entities.indices.forEach { entity ->
@@ -66,19 +73,25 @@ class PositionS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(Positio
 			val newChunkKey = position.pos.chunkKey
 
 			if (oldChunkKey != newChunkKey) {
-				world.getChunk(oldChunkKey)?.entities?.removeEntity(entity)
-				world.getChunk(newChunkKey)?.entities?.addEntity(entity)
+				entityChunkEntities.remove(entity)?.removeEntity(entity)
+
+				val newChunkEntities = world.getChunk(newChunkKey)?.entities
+				if (newChunkEntities != null) {
+					entityChunkEntities.set(entity, newChunkEntities)
+					newChunkEntities.addEntity(entity)
+				}
 			}
 		}
 	}
 
 	override fun insertedEntity(entity: Int, delta: Float) {
-		val position = positionMapper[entity]!!
-		world.getChunk(position.pos)?.entities?.addEntity(entity)
+		val position = positionMapper[entity] ?: return
+		val chunkEntities = world.getChunk(position.pos)?.entities ?: return
+		entityChunkEntities.set(entity, chunkEntities)
+		chunkEntities.addEntity(entity)
 	}
 
 	override fun removedEntity(entity: Int, delta: Float) {
-		val position = positionMapper[entity]!!
-		world.getChunk(position.pos)?.entities?.removeEntity(entity)
+		entityChunkEntities.remove(entity)?.removeEntity(entity)
 	}
 }

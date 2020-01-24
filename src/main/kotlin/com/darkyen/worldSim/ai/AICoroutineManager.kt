@@ -14,13 +14,13 @@ import kotlin.math.roundToLong
  */
 class AICoroutineManager {
 
-	private val dispatcher = AICoroutineExecutorService()
+	val dispatcher = AICoroutineExecutorService()
 	private val coroutineDispatcher = dispatcher.asCoroutineDispatcher()
 	private val coroutineScope = CoroutineScope(coroutineDispatcher)
 
 	private val brainJobs = Bag<Job>()
 
-	fun beginBrain(context:AIContext) {
+	fun beginBrain(context: AIContext) {
 		val brainJob = Job()
 		brainJobs[context.entity] = brainJob
 		val brain = context.agent.brain

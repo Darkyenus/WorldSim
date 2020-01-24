@@ -11,11 +11,20 @@ import kotlin.random.Random
 class AgentNeedS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(AgentC::class.java)) {
 
 	@Wire
-	private lateinit var agent : Mapper<AgentC>
+	private lateinit var agentC : Mapper<AgentC>
+	@Wire
+	private lateinit var renderC : Mapper<RenderC>
+	@Wire
+	private lateinit var decayC : Mapper<DecayC>
+	@Wire
+	private lateinit var positionC : Mapper<PositionC>
+	@Wire
+	private lateinit var simulationClock : SimulationSpeed
 
 	private var dayProgress = 0f
 
-	override fun update(delta: Float) {
+	override fun update(realDelta: Float) {
+		val delta = simulationClock.simulationDelta
 		dayProgress += delta
 		while (dayProgress >= HOUR_LENGTH_IN_REAL_SECONDS) {
 			dayProgress -= HOUR_LENGTH_IN_REAL_SECONDS
@@ -46,7 +55,7 @@ class AgentNeedS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(AgentC::cla
 	}
 
 	override fun process(entity: Int, delta: Float) {
-		val agent = agent[entity]
+		val agent = agentC[entity]
 
 		val attributes = agent.attributes
 		// Check if should die
@@ -54,6 +63,14 @@ class AgentNeedS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(AgentC::cla
 				|| attributes.shouldDie(AgentAttribute.THIRST, -50)
 				|| attributes.shouldDie(AgentAttribute.HUNGER, -50)
 
+		if (shouldDie) {
+			// Kill
+			agentC.remove(entity)
+			positionC[entity].speed = 0f
+			renderC[entity].sprite = 103
+			decayC.add(entity, DecayC(300_000f))
+			return
+		}
 
 		val activity = agent.activity
 		attributes.update(AgentAttribute.HEALTH, if (activity == AgentActivity.SLEEPING) HEALTH_TENDENCY_SLEEP else HEALTH_TENDENCY)

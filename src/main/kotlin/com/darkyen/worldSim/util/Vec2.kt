@@ -51,6 +51,9 @@ inline class Vec2(val packed:Long) {
 	val manhLen:Int
 		get() = abs(x) + abs(y)
 
+	/** Manhattan distance */
+	fun manhDst(to:Vec2):Int = (this - to).manhLen
+
 	override fun toString(): String = "[$x, $y]"
 
 	companion object {

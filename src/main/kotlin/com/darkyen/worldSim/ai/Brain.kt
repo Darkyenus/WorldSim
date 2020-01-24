@@ -7,7 +7,9 @@ import com.darkyen.worldSim.TileType
 import com.darkyen.worldSim.ecs.AgentActivity
 import com.darkyen.worldSim.ecs.AgentAttribute.*
 import com.darkyen.worldSim.ecs.HOUR_LENGTH_IN_MS
+import com.darkyen.worldSim.ecs.MemoryType
 import com.darkyen.worldSim.ecs.get
+import com.darkyen.worldSim.ecs.say
 import com.darkyen.worldSim.util.DIRECTIONS
 import com.darkyen.worldSim.util.Vec2
 import com.darkyen.worldSim.util.find
@@ -69,33 +71,33 @@ private suspend fun AIContext.takeCareOfBasicNeeds(howMuch:Byte):Boolean {
 	return success
 }
 
-enum class Seekable(val goNearOnly:Boolean) {
-	WATER(true) {
-		override fun acceptable(context:AIContext,pos: Vec2): Boolean = context.agentS.world.getTile(pos).type == TileType.WATER
+enum class Seekable(val goNearOnly:Boolean, val memory:MemoryType) {
+	WATER(true, MemoryType.WATER_SOURCE_POSITION) {
+		override fun acceptable(context: AIContext, pos: Vec2): Boolean = context.agentS.world.getTile(pos).type == TileType.WATER
 	},
-	FOOD(false) {
-		override fun acceptable(context:AIContext,pos: Vec2): Boolean {
+	FOOD(false, MemoryType.FOOD_SOURCE_POSITION) {
+		override fun acceptable(context: AIContext, pos: Vec2): Boolean {
 			val features = context.agentS.world.getFeature(pos) ?: return false
 			val aspects = features.aspects
 			return FOOD_SOURCES.any { it in aspects }
 		}
 	},
-	WOOD(false) {
-		override fun acceptable(context:AIContext,pos: Vec2): Boolean {
+	WOOD(false, MemoryType.WOOD_SOURCE_POSITION) {
+		override fun acceptable(context: AIContext, pos: Vec2): Boolean {
 			val features = context.agentS.world.getFeature(pos) ?: return false
 			val aspects = features.aspects
 			return FeatureAspect.WOOD_SOURCE in aspects
 		}
 	},
-	CRAFTING_MATERIAL(false) {
-		override fun acceptable(context:AIContext,pos: Vec2): Boolean {
+	CRAFTING_MATERIAL(false, MemoryType.CRATING_MATERIAL_SOURCE_POSITION) {
+		override fun acceptable(context: AIContext, pos: Vec2): Boolean {
 			val features = context.agentS.world.getFeature(pos) ?: return false
 			val aspects = features.aspects
 			return FeatureAspect.CRAFTING_MATERIAL_SOURCE in aspects
 		}
 	},
-	STONE(false) {
-		override fun acceptable(context:AIContext,pos: Vec2): Boolean {
+	STONE(false, MemoryType.STONE_SOURCE_POSITION) {
+		override fun acceptable(context: AIContext, pos: Vec2): Boolean {
 			val features = context.agentS.world.getFeature(pos) ?: return false
 			val aspects = features.aspects
 			return FeatureAspect.STONE_SOURCE in aspects
@@ -103,7 +105,7 @@ enum class Seekable(val goNearOnly:Boolean) {
 	}
 	;
 
-	abstract fun acceptable(context:AIContext, pos:Vec2):Boolean
+	abstract fun acceptable(context: AIContext, pos:Vec2):Boolean
 }
 
 private fun AIContext.lookAroundForAcceptableTile(seekable:Seekable):Vec2 {
@@ -126,12 +128,33 @@ private fun AIContext.lookAroundForAcceptableTile(seekable:Seekable):Vec2 {
 private suspend fun AIContext.seek(seekable:Seekable, timeLimitMs:Long):Boolean {
 	val timeToStop = currentTimeMs + timeLimitMs
 
+	val myPos = position.pos
+	var checkMemory = true
+
 	var direction = DIRECTIONS.random()
 	while (true) {
 		// Check nearby tiles
 		val nearbyTile = lookAroundForAcceptableTile(seekable)
 		if (nearbyTile != Vec2.NULL) {
 			return walkTo(nearbyTile, seekable.goNearOnly)
+		}
+
+		// Check memory
+		if (checkMemory) {
+			checkMemory = false
+			val recallNearest = recallNearest(seekable.memory)
+
+			if (recallNearest == Vec2.NULL || recallNearest.manhDst(myPos) > 50) {
+				// Ask others TODO Check if anybody is even nearby...
+				say(seekable.memory, Vec2.NULL)
+			}
+
+			if (recallNearest != Vec2.NULL) {
+				if (walkTo(recallNearest)) {
+					// Skip wandering
+					continue
+				}
+			}
 		}
 
 		// Check time limit
@@ -149,7 +172,7 @@ private suspend fun AIContext.seek(seekable:Seekable, timeLimitMs:Long):Boolean 
 }
 
 private suspend fun AIContext.seekWater():Boolean {
-	if (drinkFromInventory() || drinkFromEnvironment()) {
+	if (drinkFromEnvironment() || drinkFromInventory()) {
 		return true
 	}
 
@@ -182,9 +205,6 @@ private suspend fun AIContext.obtainFood():Boolean {
 	// Buy food from others
 	// TODO
 
-	// Look for food at known locations
-	// TODO
-
 	// Look for food
 	if (seek(Seekable.FOOD, 20_000)) {
 		return gatherFoodFromEnvironment()
@@ -212,7 +232,8 @@ private suspend fun AIContext.seekSocial():Boolean {
 	// Pick someone that is not doing anything important
 	val agentC = agentS.agentC
 	val idleNearbyEntity = nearbyEntities.find { entity ->
-		agentC[entity].activity.canListen
+		val agent = agentC[entity] ?: return@find false
+		agent.activity.canListen
 	}
 
 	if (idleNearbyEntity == -1) {
@@ -265,6 +286,7 @@ private suspend fun AIContext.stockUpOnMaterials() {
 	// Gather more food
 	if (inventoryCount(Item.FOOD) < 3) {
 		obtainFood()
+		return
 	}
 
 	// Refill canteens
@@ -275,11 +297,24 @@ private suspend fun AIContext.stockUpOnMaterials() {
 					break
 				}
 			}
+			return
 		}
 	}
 
 	// Craft canteens
 	if (inventoryCount(Item.WATER_CANTEEN_EMPTY) + inventoryCount(Item.WATER_CANTEEN_FULL) < 1) {
 		gatherMaterialsAndCraftItem(Item.WATER_CANTEEN_EMPTY)
+		return
+	}
+
+	// TODO(jp): Temporary
+	if (inventoryCount(Item.WOOD) < 100) {
+		obtainWood()
+		return
+	}
+
+	if (inventoryCount(Item.STONE) < 100) {
+		obtainStone()
+		return
 	}
 }

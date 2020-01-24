@@ -21,7 +21,7 @@ val WorldSim by project {
 	projectName set { "WorldSim" }
 	projectVersion set { "0.0" }
 
-	compilerOptions[KotlinCompilerFlags.customFlags] = { it + "-Xinline-classes" }
+	compilerOptions[KotlinCompilerFlags.customFlags] = { it + "-Xinline-classes" + "-Xuse-experimental=kotlin.Experimental" }
 
 	mainClass set { "com.darkyen.worldSim.Main" }
 

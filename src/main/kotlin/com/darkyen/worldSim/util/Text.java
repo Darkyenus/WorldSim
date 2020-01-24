@@ -85,6 +85,9 @@ public final class Text implements CharSequence {
         }
 
         append((int) number);
+        if (decimals <= 0) {
+            return this;
+        }
         append('.');
         number = number % 1f;
         for (int i = 0; i < decimals; i++) {

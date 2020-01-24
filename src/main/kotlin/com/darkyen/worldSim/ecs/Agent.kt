@@ -7,6 +7,7 @@ import com.darkyen.worldSim.ai.AIBrain
 import com.darkyen.worldSim.ai.AIContext
 import com.darkyen.worldSim.ai.AICoroutineManager
 import com.darkyen.worldSim.ecs.AgentAttribute.ALERTNESS
+import com.darkyen.worldSim.util.Vec2
 import com.darkyen.worldSim.util.forEach
 import com.github.antag99.retinazer.Component
 import com.github.antag99.retinazer.Mapper
@@ -27,6 +28,11 @@ class AgentC(val brain:AIBrain, val genderMale:Boolean) : Component {
 	var ageYears:Int = 0
 
 	val attributes = ByteArray(AGENT_ATTRIBUTES.size)
+
+	/** Stores ordinal into [MemoryType], corresponding info is at the corresponding index in [positionMemoryLocation] */
+	val positionMemoryType = ByteArray(MEMORY_CAPACITY)// Initialized to 0 = NO_MEMORY by default
+	/** Stores packed [Vec2] */
+	val positionMemoryLocation = LongArray(MEMORY_CAPACITY)
 
 	var activity:AgentActivity = AgentActivity.IDLE
 
@@ -53,22 +59,40 @@ class AgentC(val brain:AIBrain, val genderMale:Boolean) : Component {
 	}
 }
 
+const val MEMORY_CAPACITY = 8
+enum class MemoryType {
+	NO_MEMORY,
+	WATER_SOURCE_POSITION,
+	FOOD_SOURCE_POSITION,
+
+	WOOD_SOURCE_POSITION,
+	STONE_SOURCE_POSITION,
+	CRATING_MATERIAL_SOURCE_POSITION,
+
+	HOME_POSITION
+}
+
+val MEMORY_TYPES = MemoryType.values()
+
 enum class AgentActivity(val sprite:Int, val canListen:Boolean = false) {
 	IDLE(-1, canListen = true),
 	WALKING(-1),
 	DRINKING(86, canListen = true),
+	DRINKING_FROM_CANTEEN(100, canListen = true),
+	REFILLING_CANTEEN(100, canListen = true),
 	EATING(87, canListen = true),
 	SLEEPING(88),
 	GATHERING_MUSHROOMS(89, canListen = true),
 	GATHERING_FRUIT(90, canListen = true),
 	HUNTING(91),
 	PANICKING(92),
-	TALKING(93, canListen = true),
-	REFILLING_CANTEEN(100, canListen = true),
+	CHATTING(93, canListen = true),
 	GATHERING_CRAFTING_MATERIAL(96, canListen = true),
 	GATHERING_WOOD(97, canListen = true),
 	GATHERING_STONE(98, canListen = true),
 	CRAFTING(99, canListen = true),
+	ASKING(101, canListen = true),
+	RESPONDING(102, canListen = true),
 }
 
 enum class AgentAttribute(
@@ -130,6 +154,8 @@ class AgentS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(PositionC:
 	@Wire
 	lateinit var world: World
 	@Wire
+	private lateinit var simulationClock : SimulationSpeed
+	@Wire
 	lateinit var positionC: Mapper<PositionC>
 	@Wire
 	lateinit var agentC: Mapper<AgentC>
@@ -137,11 +163,13 @@ class AgentS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(PositionC:
 	lateinit var renderC: Mapper<RenderC>
 	@Wire
 	lateinit var pathFinder:PathFinder
+	@Wire
+	lateinit var speech:AgentSpeechS
 
-	private val brainSurgeon = AICoroutineManager()
+	val coroutineManager = AICoroutineManager()
 
 	val currentTimeMs:Long
-		get() = brainSurgeon.currentNanoTime / 1000_000L
+		get() = coroutineManager.currentNanoTime / 1000_000L
 
 	private var dayProgressSec = 0f
 	// Days elapsed
@@ -167,8 +195,9 @@ class AgentS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(PositionC:
 		}
 	}
 
+	override fun update(realDelta: Float) {
+		val delta = simulationClock.simulationDelta
 
-	override fun update(delta: Float) {
 		super.update(delta)
 		dayProgressSec += delta
 		yearProgress += if (dayProgressSec >= DAY_LENGTH_IN_REAL_SECONDS) {
@@ -180,7 +209,7 @@ class AgentS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(PositionC:
 			advanceYear()
 		}
 
-		brainSurgeon.update(delta)
+		coroutineManager.update(delta)
 	}
 
 	private fun advanceYear() {
@@ -198,11 +227,11 @@ class AgentS : FamilyWatcherSystem.Single(COMPONENT_DOMAIN.familyWith(PositionC:
 	}
 
 	override fun insertedEntity(entity: Int, delta: Float) {
-		brainSurgeon.beginBrain(AIContext(entity, this, agentC[entity]!!, positionC[entity]!!))
+		coroutineManager.beginBrain(AIContext(entity, this, agentC[entity]!!, positionC[entity]!!))
 	}
 
 	override fun removedEntity(entity: Int, delta: Float) {
-		brainSurgeon.endBrain(entity)
+		coroutineManager.endBrain(entity)
 	}
 }
 

@@ -33,7 +33,7 @@ class AgentDetailUI : EngineService, WorldSimGame.UILayerProvider {
 
 	private val selectDistance = 1
 
-	override fun update(delta: Float) {
+	override fun update(realDelta: Float) {
 		val pointingAt = camera.unproject(Gdx.input.x, Gdx.input.y)
 
 		var nearestEntity = -1

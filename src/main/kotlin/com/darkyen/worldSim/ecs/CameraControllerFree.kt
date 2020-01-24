@@ -39,7 +39,7 @@ class CameraControllerFree : EngineService, WorldSimGame.InputProcessorProvider 
 	private lateinit var camera:CameraService
 
 	private val movement = Vector2()
-	private val lookAt = Vector2()
+	private val lookAt = Vector2(WORLD_SIZE/2f, WORLD_SIZE/2f)
 
 	private val minZoomLevel = 10
 	private val maxZoomLevel = WORLD_SIZE

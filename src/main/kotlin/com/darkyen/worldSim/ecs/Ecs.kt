@@ -7,4 +7,7 @@ val COMPONENT_DOMAIN = ComponentSet(
 		PositionC::class.java,
 		CameraTrackerC::class.java,
 		RenderC::class.java,
-		AgentC::class.java)
+		AgentC::class.java,
+		AgentSpeechC::class.java,
+		DecayC::class.java
+		)

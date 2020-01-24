@@ -10,11 +10,13 @@ import com.darkyen.worldSim.ecs.AgentActivity
 import com.darkyen.worldSim.ecs.AgentAttribute
 import com.darkyen.worldSim.ecs.AgentC
 import com.darkyen.worldSim.ecs.AgentS
-import com.darkyen.worldSim.ecs.CHUNK_SIZE_SHIFT
+import com.darkyen.worldSim.ecs.MEMORY_CAPACITY
+import com.darkyen.worldSim.ecs.MEMORY_TYPES
+import com.darkyen.worldSim.ecs.MemoryType
 import com.darkyen.worldSim.ecs.PositionC
-import com.darkyen.worldSim.ecs.World
 import com.darkyen.worldSim.ecs.forChunksNear
 import com.darkyen.worldSim.ecs.get
+import com.darkyen.worldSim.ecs.say
 import com.darkyen.worldSim.ecs.set
 import com.darkyen.worldSim.util.Direction
 import com.darkyen.worldSim.util.GdxIntArray
@@ -22,14 +24,11 @@ import com.darkyen.worldSim.util.Vec2
 import com.darkyen.worldSim.util.anyPositionNearIs
 import com.darkyen.worldSim.util.directionTo
 import com.darkyen.worldSim.util.forEach
+import com.darkyen.worldSim.util.indexOfMax
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import java.util.*
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.ContinuationInterceptor
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.resumeWithException
 import kotlin.math.max
+import kotlin.random.Random
 
 /** Function that is called forever and does stuff. */
 typealias AIBrain = (suspend AIContext.() -> Unit)
@@ -44,54 +43,18 @@ inline fun loop(action:()->Unit):Nothing {
 	}
 }
 
-private object GuardFailed : Throwable("Guard failed", null, false, false)
-
-suspend fun guard(guard:() -> Boolean, activity:suspend ()->Unit):Boolean {
-	try {
-		withContext(object : ContinuationInterceptor {
-			override val key = ContinuationInterceptor
-
-			override fun <T> interceptContinuation(continuation: Continuation<T>): Continuation<T> {
-				return object : Continuation<T> {
-					override val context: CoroutineContext
-						get() = continuation.context
-
-					override fun resumeWith(result: Result<T>) {
-						if (result.isFailure) {
-							continuation.resumeWith(result)
-						} else {
-							val check = guard()
-							println("Checking conditions, looking $check")
-							if (check) {
-								continuation.resumeWith(result)
-							} else {
-								continuation.resumeWithException(GuardFailed)
-							}
-						}
-					}
-				}
-			}
-		}) {
-			activity()
-		}
-		return true
-	} catch (e :GuardFailed) {
-		return false
-	}
-}
-
 val AIContext.currentTimeMs:Long
 	get() = agentS.currentTimeMs
 
-suspend inline fun AIContext.doActivityDelay(activity:AgentActivity, durationMs:Long, onComplete:(actualDurationMs:Long) -> Unit) {
+/** Do some [activity] for given amount of time ([durationMs]).
+ * Throws when interrupted. */
+suspend fun AIContext.doActivityDelay(activity:AgentActivity, durationMs:Long) {
 	val previousActivity = agent.activity
 	agent.activity = activity
-	val startTime = currentTimeMs
 	try {
 		delay(durationMs)
 	} finally {
 		agent.activity = previousActivity
-		onComplete(currentTimeMs - startTime)
 	}
 }
 
@@ -101,7 +64,7 @@ suspend inline fun AIContext.doActivityDelay(activity:AgentActivity, durationMs:
 suspend fun AIContext.walk(direction: Direction, activity:AgentActivity = AgentActivity.WALKING):Boolean {
 	val entity = entity
 	val agentS = agentS
-	val agentC = agentS.agentC[entity]
+	val agentC = agent
 	val positionC = agentS.positionC[entity]
 	val moveFrom = positionC.pos
 	val moveTo = moveFrom + direction.vec
@@ -181,6 +144,89 @@ fun AIContext.featureAt(offset: Vec2): Feature? {
 	return agentS.world.getFeature(position.pos + offset)
 }
 
+/** Memorize something. May remove some other memory if the memory is full. */
+fun AIContext.memorize(type: MemoryType, newLocation:Vec2) {
+	val memoryTypes = agent.positionMemoryType
+	val memoryLocations = agent.positionMemoryLocation
+	val typeOrdinal = type.ordinal.toByte()
+
+	val firstEmptyMemoryIndex = memoryTypes.indexOf(0)
+	if (firstEmptyMemoryIndex != -1) {
+		// Good, memorize it there
+		memoryTypes[firstEmptyMemoryIndex] = typeOrdinal
+		memoryLocations[firstEmptyMemoryIndex] = newLocation.packed
+		return
+	}
+
+	val myPos = this.position.pos
+
+	val memoryTypeCounts = ByteArray(memoryTypes.size)
+
+	// Count all memory types to find what is the least useful memory
+	// If we encounter that we already remember something similar to this, update it and quit
+	for (i in memoryTypes.indices) {
+		val memoryType = memoryTypes[i]
+		memoryTypeCounts[memoryType.toInt()]++
+		if (memoryType != typeOrdinal) {
+			continue
+		}
+		val loc = Vec2(memoryLocations[i])
+		if (loc.manhDst(newLocation) < 10) {
+			// This is really close to a previous memory, update if closer to us and be done with it
+			if (myPos.manhDst(newLocation) < loc.manhDst(newLocation)) {
+				memoryLocations[i] = newLocation.packed
+			}
+			return
+		}
+	}
+
+	val mostAbundantMemory = memoryTypeCounts.indexOfMax()
+	// Pick random abundant memory and forget it, replacing it with our new info
+	var memoryToForget = Random.nextInt(memoryTypeCounts[mostAbundantMemory].toInt())
+	for (i in memoryTypes.indices) {
+		val memoryType = memoryTypes[i]
+		if (memoryType.toInt() != mostAbundantMemory) {
+			continue
+		}
+		if (memoryToForget-- == 0) {
+			// Forget this one
+			memoryTypes[i] = typeOrdinal
+			memoryLocations[i] = newLocation.packed
+			return
+		}
+	}
+
+	assert(false) { "Should have forgotten something!" }
+}
+
+/** Recall from memory the location of the nearest location of given type.
+ * May return [Vec2.NULL] if no such location exists. */
+fun AIContext.recallNearest(type: MemoryType):Vec2 {
+	val memoryTypes = agent.positionMemoryType
+	val memoryLocations = agent.positionMemoryLocation
+	val typeOrdinal = type.ordinal.toByte()
+	val myPos = this.position.pos
+
+	var nearest = Vec2.NULL
+	var nearestDst = Integer.MAX_VALUE
+
+	for (i in memoryTypes.indices) {
+		val memoryType = memoryTypes[i]
+		if (memoryType != typeOrdinal) {
+			continue
+		}
+
+		val memLoc = Vec2(memoryLocations[i])
+		val dst = memLoc.manhDst(myPos)
+		if (dst < nearestDst) {
+			nearest = memLoc
+			nearestDst = dst
+		}
+	}
+
+	return nearest
+}
+
 const val AGENT_VISIBILITY_DISTANCE = 10
 
 private inline fun AIContext.forNearbyEntities(action:(mDistance:Int, entity:Int) -> Unit) {
@@ -228,24 +274,22 @@ fun AIContext.findNearbyAgents():GdxIntArray {
 suspend fun AIContext.eatFromInventory():Boolean {
 	val foodAmount = agent.inventory[Item.FOOD.ordinal]
 	if (foodAmount > 0) {
-		agent.inventory[Item.FOOD.ordinal] -= 1
 		// Eat
+		doActivityDelay(AgentActivity.EATING, FOOD_EAT_TIME_MS)
+		agent.inventory[Item.FOOD.ordinal] -= 1
 		agent.attributes[AgentAttribute.HUNGER] = agent.attributes[AgentAttribute.HUNGER] + HUNGER_POINTS_PER_FOOD
-		doActivityDelay(AgentActivity.EATING, FOOD_EAT_TIME_MS) {}
 		return true
 	}
 	return false
 }
 
 suspend fun AIContext.drinkFromInventory():Boolean {
-	val foodAmount = agent.inventory[Item.WATER_CANTEEN_FULL.ordinal]
-	if (foodAmount > 0) {
+	val canteenAmount = agent.inventory[Item.WATER_CANTEEN_FULL.ordinal]
+	if (canteenAmount > 0) {
+		doActivityDelay(AgentActivity.DRINKING_FROM_CANTEEN, DRINK_DURATION_MS)
 		agent.inventory[Item.WATER_CANTEEN_FULL.ordinal] -= 1
 		agent.inventory[Item.WATER_CANTEEN_EMPTY.ordinal] += 1
-		// Eat
 		agent.attributes[AgentAttribute.THIRST] = agent.attributes[AgentAttribute.THIRST] + THIRST_POINTS_PER_DRINK_CONTAINER
-
-		doActivityDelay(AgentActivity.DRINKING, DRINK_DURATION_MS) {}
 		return true
 	}
 	return false
@@ -253,24 +297,29 @@ suspend fun AIContext.drinkFromInventory():Boolean {
 
 suspend fun AIContext.drinkFromEnvironment():Boolean {
 	val world = agentS.world
-	val waterNearby = anyPositionNearIs(position.pos) { pos -> world.getTile(pos).type == TileType.WATER }
+	val myPos = position.pos
+	val waterNearby = anyPositionNearIs(myPos) { pos -> world.getTile(pos).type == TileType.WATER }
 
 	if (!waterNearby) {
 		return false
 	}
 
-	// Drink
+	memorize(MemoryType.WATER_SOURCE_POSITION, myPos)
+
+	doActivityDelay(AgentActivity.DRINKING, ENVIRONMENT_DRINK_DURATION_MS)
 	agent.attributes[AgentAttribute.THIRST] = AgentAttribute.THIRST.max
-	doActivityDelay(AgentActivity.DRINKING, ENVIRONMENT_DRINK_DURATION_MS) {}
 	return true
 }
 
 suspend fun AIContext.refillCanteen():Boolean {
 	val world = agentS.world
-	val waterNearby = anyPositionNearIs(position.pos) { pos -> world.getTile(pos).type == TileType.WATER }
+	val myPos = position.pos
+	val waterNearby = anyPositionNearIs(myPos) { pos -> world.getTile(pos).type == TileType.WATER }
 	if (!waterNearby) {
 		return false
 	}
+
+	memorize(MemoryType.WATER_SOURCE_POSITION, myPos)
 
 	val inventory = agent.inventory
 	if (inventory[Item.WATER_CANTEEN_EMPTY.ordinal] <= 0) {
@@ -278,101 +327,88 @@ suspend fun AIContext.refillCanteen():Boolean {
 	}
 
 	// Refill
-	doActivityDelay(AgentActivity.REFILLING_CANTEEN, REFILL_CANTEEN_DURATION_MS) { time ->
-		if (time >= REFILL_CANTEEN_DURATION_MS) {
-			inventory[Item.WATER_CANTEEN_EMPTY.ordinal]--
-			inventory[Item.WATER_CANTEEN_FULL.ordinal]++
-		}
-	}
+	doActivityDelay(AgentActivity.REFILLING_CANTEEN, REFILL_CANTEEN_DURATION_MS)
+	inventory[Item.WATER_CANTEEN_EMPTY.ordinal]--
+	inventory[Item.WATER_CANTEEN_FULL.ordinal]++
 	return true
 }
 
 suspend fun AIContext.gatherCraftingResourcesFromEnvironment():Boolean {
-	val tileFeatures = agentS.world.getFeature(position.pos) ?: return false
+	val myPos = position.pos
+	val tileFeatures = agentS.world.getFeature(myPos) ?: return false
 	val aspects = tileFeatures.aspects
 	if (FeatureAspect.CRAFTING_MATERIAL_SOURCE in aspects) {
-		doActivityDelay(AgentActivity.GATHERING_CRAFTING_MATERIAL, GATHERING_CRAFTING_MATERIAL_DURATION_MS) {
-			if (it >= GATHERING_CRAFTING_MATERIAL_DURATION_MS) {
-				agent.inventory[Item.CRAFTING_MATERIAL.ordinal]++
-			}
-		}
+		memorize(MemoryType.CRATING_MATERIAL_SOURCE_POSITION, myPos)
+
+		doActivityDelay(AgentActivity.GATHERING_CRAFTING_MATERIAL, GATHERING_CRAFTING_MATERIAL_DURATION_MS)
+		agent.inventory[Item.CRAFTING_MATERIAL.ordinal]++
 		return true
 	}
-
 	return false
 }
 
 suspend fun AIContext.gatherWoodFromEnvironment():Boolean {
-	val tileFeatures = agentS.world.getFeature(position.pos) ?: return false
+	val myPos = position.pos
+	val tileFeatures = agentS.world.getFeature(myPos) ?: return false
 	val aspects = tileFeatures.aspects
 	if (FeatureAspect.WOOD_SOURCE in aspects) {
-		doActivityDelay(AgentActivity.GATHERING_WOOD, GATHERING_WOOD_DURATION_MS) {
-			if (it >= GATHERING_WOOD_DURATION_MS) {
-				agent.inventory[Item.WOOD.ordinal]++
-			}
-		}
+		memorize(MemoryType.WOOD_SOURCE_POSITION, myPos)
+
+		doActivityDelay(AgentActivity.GATHERING_WOOD, GATHERING_WOOD_DURATION_MS)
+		agent.inventory[Item.WOOD.ordinal]++
 		return true
 	}
-
 	return false
 }
 
 suspend fun AIContext.gatherStoneFromEnvironment():Boolean {
-	val tileFeatures = agentS.world.getFeature(position.pos) ?: return false
+	val myPos = position.pos
+	val tileFeatures = agentS.world.getFeature(myPos) ?: return false
 	val aspects = tileFeatures.aspects
 	if (FeatureAspect.STONE_SOURCE in aspects) {
-		doActivityDelay(AgentActivity.GATHERING_STONE, GATHERING_STONE_DURATION_MS) {
-			if (it >= GATHERING_STONE_DURATION_MS) {
-				agent.inventory[Item.STONE.ordinal]++
-			}
-		}
-		return true
-	}
+		memorize(MemoryType.STONE_SOURCE_POSITION, myPos)
 
+		doActivityDelay(AgentActivity.GATHERING_STONE, GATHERING_STONE_DURATION_MS)
+		agent.inventory[Item.STONE.ordinal]++
+	}
 	return false
 }
 
 suspend fun AIContext.gatherFoodFromEnvironment():Boolean {
-	val pos = position.pos
+	val myPos = position.pos
 	val world = agentS.world
-	val tileFeatures = world.getFeature(pos) ?: return false
+	val tileFeatures = world.getFeature(myPos) ?: return false
 
 	val aspects = tileFeatures.aspects
 	if (FeatureAspect.FOOD_SOURCE_FRUIT in aspects) {
-		doActivityDelay(AgentActivity.GATHERING_FRUIT, GATHERING_DURATION_MS) {
-			if (it >= GATHERING_DURATION_MS) {
-				agent.inventory[Item.FOOD.ordinal]++
-			}
-		}
+		memorize(MemoryType.FOOD_SOURCE_POSITION, myPos)
+
+		doActivityDelay(AgentActivity.GATHERING_FRUIT, GATHERING_DURATION_MS)
+		agent.inventory[Item.FOOD.ordinal]++
 		return true
 	}
 
 	if (FeatureAspect.FOOD_SOURCE_MUSHROOMS in aspects) {
-		doActivityDelay(AgentActivity.GATHERING_MUSHROOMS, GATHERING_DURATION_MS) {
-			if (it >= GATHERING_DURATION_MS) {
-				agent.inventory[Item.FOOD.ordinal]++
-			}
-		}
+		memorize(MemoryType.FOOD_SOURCE_POSITION, myPos)
+
+		doActivityDelay(AgentActivity.GATHERING_MUSHROOMS, GATHERING_DURATION_MS)
+		agent.inventory[Item.FOOD.ordinal]++
 		return true
 	}
 
 	if (!agent.isBaby && FeatureAspect.FOOD_SOURCE_WILD_ANIMALS in aspects) {
+		memorize(MemoryType.FOOD_SOURCE_POSITION, myPos)
 		// TODO(jp): Skill check
-		doActivityDelay(AgentActivity.HUNTING, HUNTING_DURATION_MS) {
-			if (it >= HUNTING_DURATION_MS) {
-				agent.inventory[Item.FOOD.ordinal] += 7
-			}
-		}
+		doActivityDelay(AgentActivity.HUNTING, HUNTING_DURATION_MS)
+		agent.inventory[Item.FOOD.ordinal] += 7
 		return true
 	}
 
 	if (FeatureAspect.FOOD_SOURCE_SMALL_WILD_ANIMALS in aspects) {
+		memorize(MemoryType.FOOD_SOURCE_POSITION, myPos)
 		// TODO(jp): Skill check
-		doActivityDelay(AgentActivity.HUNTING, HUNTING_SMALL_DURATION_MS) {
-			if (it >= HUNTING_SMALL_DURATION_MS) {
-				agent.inventory[Item.FOOD.ordinal] += 5
-			}
-		}
+		doActivityDelay(AgentActivity.HUNTING, HUNTING_SMALL_DURATION_MS)
+		agent.inventory[Item.FOOD.ordinal] += 5
 		return true
 	}
 
@@ -380,12 +416,10 @@ suspend fun AIContext.gatherFoodFromEnvironment():Boolean {
 }
 
 suspend fun AIContext.sleep() {
-	val sleepFor = max(AgentAttribute.SLEEP.max - agent.attributes[AgentAttribute.SLEEP], 10)
-	val duration = sleepFor * SLEEP_DURATION_MS_PER_POINT
-
-	doActivityDelay(AgentActivity.SLEEPING, duration) { realDuration ->
-		val sleepPoints = ((realDuration + SLEEP_DURATION_MS_PER_POINT/2) / SLEEP_DURATION_MS_PER_POINT).toInt()
-		agent.attributes[AgentAttribute.SLEEP] = agent.attributes[AgentAttribute.SLEEP] + sleepPoints
+	val sleepForPoints = max(AgentAttribute.SLEEP.max - agent.attributes[AgentAttribute.SLEEP], 10)
+	for (i in 0 until sleepForPoints) {
+		doActivityDelay(AgentActivity.SLEEPING, SLEEP_DURATION_MS_PER_POINT)
+		agent.attributes[AgentAttribute.SLEEP] = agent.attributes[AgentAttribute.SLEEP] + 1
 	}
 }
 
@@ -401,10 +435,48 @@ suspend fun AIContext.talkWith(entity:Int):Boolean {
 	}
 
 	// All checks are ok, lets talk
-	doActivityDelay(AgentActivity.TALKING, TALK_DURATION_MS_PER_POINT * 5) { realDuration ->
-		val socialPoints = ((realDuration + TALK_DURATION_MS_PER_POINT / 2) / TALK_DURATION_MS_PER_POINT).toInt()
-		agent.attributes[AgentAttribute.SOCIAL] = agent.attributes[AgentAttribute.SOCIAL] + socialPoints
+	for (i in 0 until 5) {
+		val typeToSay:MemoryType
+		val infoToSay:Vec2
+		// Sometimes say something useful
+		when (Random.nextBits(3)) {
+			0 -> {
+				// Tell something or ask about something
+				val index = Random.nextInt(MEMORY_CAPACITY)
+				val chosenInformationType = MEMORY_TYPES[agent.positionMemoryType[index].toInt()]
+				if (chosenInformationType == MemoryType.NO_MEMORY) {
+					// Ask instead
+					typeToSay = MEMORY_TYPES.random()
+					infoToSay = Vec2.NULL
+				} else {
+					typeToSay = chosenInformationType
+					infoToSay = Vec2(agent.positionMemoryLocation[index])
+				}
+			}
+			1 -> {
+				// Ask about something
+				typeToSay = MEMORY_TYPES.random()
+				infoToSay = Vec2.NULL
+			}
+			else -> {
+				// Just chatter
+				typeToSay = MemoryType.NO_MEMORY
+				infoToSay = Vec2.NULL
+			}
+		}
+
+		if (typeToSay == MemoryType.NO_MEMORY) {
+			// Just chat
+			doActivityDelay(AgentActivity.CHATTING, TALK_DURATION_MS_PER_POINT)
+			val agent = agent
+			val attributes = agent.attributes
+			attributes[AgentAttribute.SOCIAL] = attributes[AgentAttribute.SOCIAL] + 1
+		} else {
+			// Ask or Tell
+			say(typeToSay, infoToSay, TALK_DURATION_MS_PER_POINT, socialReward=1)
+		}
 	}
+
 	return true
 }
 
@@ -420,14 +492,10 @@ suspend fun AIContext.craftItem(item:Item):Boolean {
 
 	val duration = craftMaterialRequirement * CRAFTING_DURATION_MS_PER_MATERIAL
 
-	doActivityDelay(AgentActivity.CRAFTING, duration) { time ->
-		if (time >= duration) {
-			agent.inventory[Item.CRAFTING_MATERIAL.ordinal] -= craftMaterialRequirement
-			agent.inventory[item.ordinal]++
-			return true
-		}
-	}
-	return false
+	doActivityDelay(AgentActivity.CRAFTING, duration)
+	agent.inventory[Item.CRAFTING_MATERIAL.ordinal] -= craftMaterialRequirement
+	agent.inventory[item.ordinal]++
+	return true
 }
 
 const val MAX_LOOK_DISTANCE = 4

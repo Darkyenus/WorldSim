@@ -51,6 +51,7 @@ object EntityChunkPopulator : ChunkPopulator {
 
 			positionC.create(entity).pos = worldPos
 			agentC.add(entity, AgentC(AIContext::brain, genderMale).also {
+				it.ageYears = age
 				for (attribute in AGENT_ATTRIBUTES) {
 					it.attributes[attribute.ordinal] = Random.nextInt(max(attribute.min.toInt(), 0), attribute.max + 1).toByte()
 				}

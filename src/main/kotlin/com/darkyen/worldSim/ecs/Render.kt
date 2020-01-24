@@ -43,6 +43,8 @@ class RenderS : EntitySystem(COMPONENT_DOMAIN.familyWith(PositionC::class.java, 
 	@Wire
 	private lateinit var world: World
 	@Wire
+	private lateinit var simulationClock : SimulationSpeed
+	@Wire
 	private lateinit var position: Mapper<PositionC>
 	@Wire
 	private lateinit var agent: Mapper<AgentC>
@@ -52,8 +54,6 @@ class RenderS : EntitySystem(COMPONENT_DOMAIN.familyWith(PositionC::class.java, 
 	private lateinit var camera: CameraService
 
 	companion object {
-		var DEBUG_DRAW_INFO: CharSequence? = null
-
 		private const val OVERLAP = 5f
 	}
 
@@ -62,7 +62,7 @@ class RenderS : EntitySystem(COMPONENT_DOMAIN.familyWith(PositionC::class.java, 
 	private val debugDrawText = Text()
 	private val frustum = Rectangle()
 
-	override fun update(delta: Float) {
+	override fun update(realDelta: Float) {
 		if (debugDrawEnabled) {
 			updateDebugDrawing()
 		}
@@ -154,7 +154,7 @@ class RenderS : EntitySystem(COMPONENT_DOMAIN.familyWith(PositionC::class.java, 
 		val text = debugDrawText
 		text.clear()
 		text.append("X: ").append(cursorPos.x, 2).append(" Y: ").append(cursorPos.y, 2)
-		text.append("\nFPS: ").append(Gdx.graphics.framesPerSecond).append('\n').append(DEBUG_DRAW_INFO)
+		text.append("\nFPS: ").append(Gdx.graphics.framesPerSecond).append('\n').append("Speed: ").append(simulationClock.multiplier, 0)
 		debugTextLabel.setText(text)
 	}
 

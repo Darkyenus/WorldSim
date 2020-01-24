@@ -11,12 +11,15 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport
 import com.darkyen.worldSim.ecs.AgentDetailUI
 import com.darkyen.worldSim.ecs.AgentNeedS
 import com.darkyen.worldSim.ecs.AgentS
+import com.darkyen.worldSim.ecs.AgentSpeechS
 import com.darkyen.worldSim.ecs.COMPONENT_DOMAIN
 import com.darkyen.worldSim.ecs.CameraControllerFree
 import com.darkyen.worldSim.ecs.CameraService
+import com.darkyen.worldSim.ecs.DecayS
 import com.darkyen.worldSim.ecs.PathFinder
 import com.darkyen.worldSim.ecs.PositionS
 import com.darkyen.worldSim.ecs.RenderS
+import com.darkyen.worldSim.ecs.SimulationSpeed
 import com.darkyen.worldSim.ecs.World
 import com.darkyen.worldSim.input.InputStack
 import com.github.antag99.retinazer.Engine
@@ -26,10 +29,13 @@ import com.github.antag99.retinazer.Engine
  */
 class WorldSimGame : Screen {
 	private val engine = Engine(COMPONENT_DOMAIN,
+			SimulationSpeed(),
+			DecayS(),
 			World(NoiseWorldGenerator(), EntityChunkPopulator),
 			PathFinder(),
 			AgentNeedS(),
 			AgentS(),
+			AgentSpeechS(),
 			PositionS(),
 			CameraControllerFree(),
 			CameraService(),

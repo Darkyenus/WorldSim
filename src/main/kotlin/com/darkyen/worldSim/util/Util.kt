@@ -40,3 +40,16 @@ inline fun GdxIntArray.find(op:(Int)->Boolean):Int {
 	}
 	return -1
 }
+
+fun ByteArray.indexOfMax():Int {
+	var maxIndex = 0
+	var maxValue = this[0]
+	for (i in 1 until size) {
+		val value = this[i]
+		if (value > maxValue) {
+			maxValue = value
+			maxIndex = i
+		}
+	}
+	return maxIndex
+}
