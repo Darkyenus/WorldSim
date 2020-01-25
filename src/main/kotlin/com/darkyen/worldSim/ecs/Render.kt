@@ -109,10 +109,10 @@ class RenderS : EntitySystem(RENDER_FAMILY), RenderService, WorldSimGame.UILayer
 
 		// Draw entities
 		renderSpatialLookup.forEntitiesInChunksSpanningRectangle(low, high) { entity ->
-			val position = position[entity]
+			val position = position[entity]!!
 			val pos = position.getPosition(posTmp)
 			if (!frustum.contains(pos)) return@forEntitiesInChunksSpanningRectangle //Frustum culling
-			val sprite = WorldSim.sprites[render[entity].sprite]
+			val sprite = WorldSim.sprites[render[entity]!!.sprite]
 
 			val activity = agent[entity]?.activity ?: AgentActivity.IDLE
 

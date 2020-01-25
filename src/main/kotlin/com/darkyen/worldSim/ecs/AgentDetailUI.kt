@@ -10,7 +10,6 @@ import com.darkyen.worldSim.RenderService
 import com.darkyen.worldSim.WorldSim
 import com.darkyen.worldSim.WorldSimGame
 import com.darkyen.worldSim.util.Vec2
-import com.github.antag99.retinazer.EngineService
 import com.github.antag99.retinazer.Mapper
 import com.github.antag99.retinazer.Wire
 import kotlin.math.roundToInt
@@ -60,7 +59,7 @@ class AgentDetailUI : RenderService, WorldSimGame.UILayerProvider {
 		uiLayer.isVisible = true
 
 		entityId.setText(nearestEntity)
-		val agent = agentC[nearestEntity]
+		val agent = agentC[nearestEntity]!!
 
 		activity.setText(agent.activity.name)
 		age.setText(agent.ageYears)

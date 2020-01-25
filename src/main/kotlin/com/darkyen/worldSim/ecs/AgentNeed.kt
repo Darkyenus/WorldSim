@@ -57,7 +57,7 @@ class AgentNeedS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(AgentC::cla
 	}
 
 	override fun process(entity: Int) {
-		val agent = agentC[entity]
+		val agent = agentC[entity]!!
 
 		val attributes = agent.attributes
 		// Check if should die
@@ -68,8 +68,8 @@ class AgentNeedS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(AgentC::cla
 		if (shouldDie) {
 			// Kill
 			agentC.remove(entity)
-			positionC[entity].speed = 0f
-			renderC[entity].sprite = 103
+			positionC[entity]!!.speed = 0f
+			renderC[entity]!!.sprite = 103
 			decayC.add(entity, DecayC(300f))
 			return
 		}

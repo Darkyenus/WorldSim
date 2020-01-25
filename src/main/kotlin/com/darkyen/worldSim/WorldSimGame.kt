@@ -17,6 +17,7 @@ import com.darkyen.worldSim.ecs.COMPONENT_DOMAIN
 import com.darkyen.worldSim.ecs.CameraControllerFree
 import com.darkyen.worldSim.ecs.CameraService
 import com.darkyen.worldSim.ecs.DecayS
+import com.darkyen.worldSim.ecs.IntelligentS
 import com.darkyen.worldSim.ecs.PathFinder
 import com.darkyen.worldSim.ecs.PositionS
 import com.darkyen.worldSim.ecs.RenderS
@@ -39,6 +40,7 @@ class WorldSimGame : Screen {
 			PathFinder(),
 			AgentNeedS(),
 			AgentS(),
+			IntelligentS(),
 			AgentSpeechS(),
 
 			PositionS(),

@@ -40,8 +40,8 @@ class WeightedSamplerTest {
 			samples[sampler.sample(random)]++
 		}
 
-		Assertions.assertTrue(samples[0] > 5, samples.contentToString())
-		Assertions.assertTrue(samples[1] > 850, samples.contentToString())
+		Assertions.assertTrue(samples[0] < 50, samples.contentToString())
+		Assertions.assertTrue(samples[1] >= 850, samples.contentToString())
 		Assertions.assertEquals(1000, samples.sum(), samples.contentToString())
 	}
 

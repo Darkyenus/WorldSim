@@ -32,8 +32,8 @@ class CameraTrackerS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(Positio
 	}
 
 	override fun process(entity: Int) {
-		val positionC = positionMapper[entity]
-		val cameraTrackerC = cameraTrackerMapper[entity]
+		val positionC = positionMapper[entity]!!
+		val cameraTrackerC = cameraTrackerMapper[entity]!!
 
 		val x = positionC.getX()
 		val y = positionC.getY()

@@ -37,7 +37,7 @@ class PositionS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(PositionC::c
 	@Wire
 	private lateinit var positionMapper: Mapper<PositionC>
 	@Wire
-	private lateinit var agentS: AgentS
+	private lateinit var intelligentS: IntelligentS
 	@Wire
 	private lateinit var simulationClock : SimulationSpeedRegulator
 	@Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
@@ -62,7 +62,7 @@ class PositionS : EntityProcessorSystem(COMPONENT_DOMAIN.familyWith(PositionC::c
 		position.pos += movement.vec
 		position.progress = min(newProgress - 1f, 1f)
 		position.movement = Direction.NONE
-		agentS.continueEntity(entity)
+		intelligentS.continueEntity(entity)
 
 		val newChunkKey = position.pos.chunkKey
 

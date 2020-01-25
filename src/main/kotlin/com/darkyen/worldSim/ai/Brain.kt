@@ -4,6 +4,7 @@ import com.darkyen.worldSim.FOOD_SOURCES
 import com.darkyen.worldSim.FeatureAspect
 import com.darkyen.worldSim.Item
 import com.darkyen.worldSim.TileType
+import com.darkyen.worldSim.ecs.AIContext
 import com.darkyen.worldSim.ecs.AgentActivity
 import com.darkyen.worldSim.ecs.AgentAttribute.*
 import com.darkyen.worldSim.ecs.HOUR_LENGTH_IN_MS
@@ -13,7 +14,6 @@ import com.darkyen.worldSim.ecs.say
 import com.darkyen.worldSim.util.DIRECTIONS
 import com.darkyen.worldSim.util.Vec2
 import com.darkyen.worldSim.util.find
-import kotlinx.coroutines.delay
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.random.Random
@@ -27,13 +27,13 @@ suspend fun AIContext.brain() {
 			panic()
 		}
 
-		delay(1000)
+		delay(AgentActivity.PONDERING, 1000)
 		return
 	}
 
 	stockUpOnMaterials()
 
-	delay(1000)
+	delay(AgentActivity.PONDERING, 1000)
 }
 
 private suspend fun AIContext.takeCareOfBasicNeeds(howMuch:Byte):Boolean {
@@ -74,32 +74,32 @@ private suspend fun AIContext.takeCareOfBasicNeeds(howMuch:Byte):Boolean {
 
 enum class Seekable(val goNearOnly:Boolean, val memory:MemoryType) {
 	WATER(true, MemoryType.WATER_SOURCE_POSITION) {
-		override fun acceptable(context: AIContext, pos: Vec2): Boolean = context.agentS.world.getTile(pos).type == TileType.WATER
+		override fun acceptable(context: AIContext, pos: Vec2): Boolean = context.tileAt(pos).type == TileType.WATER
 	},
 	FOOD(false, MemoryType.FOOD_SOURCE_POSITION) {
 		override fun acceptable(context: AIContext, pos: Vec2): Boolean {
-			val features = context.agentS.world.getFeature(pos) ?: return false
+			val features = context.featureAt(pos) ?: return false
 			val aspects = features.aspects
 			return FOOD_SOURCES.any { it in aspects }
 		}
 	},
 	WOOD(false, MemoryType.WOOD_SOURCE_POSITION) {
 		override fun acceptable(context: AIContext, pos: Vec2): Boolean {
-			val features = context.agentS.world.getFeature(pos) ?: return false
+			val features = context.featureAt(pos) ?: return false
 			val aspects = features.aspects
 			return FeatureAspect.WOOD_SOURCE in aspects
 		}
 	},
 	CRAFTING_MATERIAL(false, MemoryType.CRATING_MATERIAL_SOURCE_POSITION) {
 		override fun acceptable(context: AIContext, pos: Vec2): Boolean {
-			val features = context.agentS.world.getFeature(pos) ?: return false
+			val features = context.featureAt(pos) ?: return false
 			val aspects = features.aspects
 			return FeatureAspect.CRAFTING_MATERIAL_SOURCE in aspects
 		}
 	},
 	STONE(false, MemoryType.STONE_SOURCE_POSITION) {
 		override fun acceptable(context: AIContext, pos: Vec2): Boolean {
-			val features = context.agentS.world.getFeature(pos) ?: return false
+			val features = context.featureAt(pos) ?: return false
 			val aspects = features.aspects
 			return FeatureAspect.STONE_SOURCE in aspects
 		}
@@ -231,7 +231,7 @@ private suspend fun AIContext.seekSocial():Boolean {
 	}
 
 	// Pick someone that is not doing anything important
-	val agentC = agentS.agentC
+	val agentC = agentMapper
 	val idleNearbyEntity = nearbyEntities.find { entity ->
 		val agent = agentC[entity] ?: return@find false
 		agent.activity.canListen
@@ -241,7 +241,7 @@ private suspend fun AIContext.seekSocial():Boolean {
 		return false
 	}
 
-	val positionC = agentS.positionC[idleNearbyEntity] ?: return false
+	val positionC = positionMapper[idleNearbyEntity] ?: return false
 	if (!walkTo(positionC.pos, true)) {
 		return false
 	}

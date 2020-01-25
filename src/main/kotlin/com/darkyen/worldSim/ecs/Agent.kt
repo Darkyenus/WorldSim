@@ -4,27 +4,19 @@ import com.badlogic.gdx.math.MathUtils
 import com.darkyen.worldSim.EntityChunkPopulator
 import com.darkyen.worldSim.ITEMS
 import com.darkyen.worldSim.SimulationSpeedRegulator
-import com.darkyen.worldSim.ai.AIBrain
-import com.darkyen.worldSim.ai.AIContext
-import com.darkyen.worldSim.ai.AICoroutineManager
 import com.darkyen.worldSim.ecs.AgentAttribute.ALERTNESS
 import com.darkyen.worldSim.util.Vec2
-import com.darkyen.worldSim.util.forEach
 import com.github.antag99.retinazer.Component
 import com.github.antag99.retinazer.Mapper
 import com.github.antag99.retinazer.Wire
-import com.github.antag99.retinazer.systems.FamilyWatcherSystem
-import com.github.antag99.retinazer.util.Bag
-import kotlin.coroutines.Continuation
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
+import com.github.antag99.retinazer.systems.EntityProcessorSystem
 import kotlin.math.max
 import kotlin.random.Random
 
 /**
  *
  */
-class AgentC(val brain:AIBrain, val genderMale:Boolean) : Component {
+class AgentC(val genderMale:Boolean) : Component {
 	val inventory = IntArray(ITEMS.size)
 	var ageYears:Int = 0
 
@@ -77,6 +69,7 @@ val MEMORY_TYPES = MemoryType.values()
 
 enum class AgentActivity(val sprite:Int, val canListen:Boolean = false) {
 	IDLE(-1, canListen = true),
+	PONDERING(-1, canListen = true),
 	WALKING(-1),
 	DRINKING(86, canListen = true),
 	DRINKING_FROM_CANTEEN(100, canListen = true),
@@ -154,56 +147,24 @@ private val AGENT_FAMILY = COMPONENT_DOMAIN.familyWith(PositionC::class.java, Ag
 
 class AgentSpatialLookup : SpatialLookupService(AGENT_FAMILY)
 
-class AgentS : FamilyWatcherSystem.Single(AGENT_FAMILY) {
+class AgentS : EntityProcessorSystem(AGENT_FAMILY) {
 
 	@Wire
 	lateinit var world: World
 	@Wire
 	private lateinit var simulationClock : SimulationSpeedRegulator
 	@Wire
-	lateinit var positionC: Mapper<PositionC>
-	@Wire
 	lateinit var agentC: Mapper<AgentC>
 	@Wire
 	lateinit var renderC: Mapper<RenderC>
-	@Wire
-	lateinit var pathFinder:PathFinder
-	@Wire
-	lateinit var speech:AgentSpeechS
-	@Wire
-	lateinit var agentSpatialLookup:AgentSpatialLookup
-
-	val coroutineManager = AICoroutineManager()
-
-	val currentTimeMs:Long
-		get() = coroutineManager.currentNanoTime / 1000_000L
 
 	private var dayProgressSec = 0f
 	// Days elapsed
 	private var yearProgress = 0
 	private val yearLengthDays = 50
 
-	private val waitingContinuation = Bag<Continuation<Unit>>()
-
-	fun continueEntity(entity:Int) {
-		waitingContinuation.get(entity)!!.resume(Unit)
-	}
-
-	suspend fun waitEntity(entity:Int, activity:AgentActivity) {
-		val agent: AgentC = agentC[entity]
-		val oldActivity = agent.activity
-		agent.activity = activity
-		try {
-			suspendCoroutine<Unit> {
-				waitingContinuation.set(entity, it)
-			}
-		} finally {
-			agent.activity = oldActivity
-		}
-	}
 
 	override fun update() {
-		super.update()
 		val delta = simulationClock.simulationDelta
 		dayProgressSec += delta
 		yearProgress += if (dayProgressSec >= DAY_LENGTH_IN_REAL_SECONDS) {
@@ -212,32 +173,19 @@ class AgentS : FamilyWatcherSystem.Single(AGENT_FAMILY) {
 		} else 0
 		if (yearProgress >= yearLengthDays) {
 			yearProgress -= yearLengthDays
-			advanceYear()
+			super.update()
 		}
-
-		coroutineManager.update(delta)
 	}
 
-	private fun advanceYear() {
-		// Age everyone by 1 year
-		entities.indices.forEach { entity ->
-			val agent = agentC[entity]
-			agent.ageYears += 1
-			if (agent.ageYears == MATURITY_AGE_YEAR) {
-				// Update sprite from child sprite
-				renderC[entity]?.let {
-					it.sprite = (if (agent.genderMale) EntityChunkPopulator.maleSprites else EntityChunkPopulator.femaleSprites).random()
-				}
+	override fun process(entity: Int) {
+		val agent = agentC[entity]!!
+		agent.ageYears += 1
+		if (agent.ageYears == MATURITY_AGE_YEAR) {
+			// Update sprite from child sprite
+			renderC[entity]?.let {
+				it.sprite = (if (agent.genderMale) EntityChunkPopulator.maleSprites else EntityChunkPopulator.femaleSprites).random()
 			}
 		}
-	}
-
-	override fun insertedEntity(entity: Int) {
-		coroutineManager.beginBrain(AIContext(entity, this, agentC[entity]!!, positionC[entity]!!))
-	}
-
-	override fun removedEntity(entity: Int) {
-		coroutineManager.endBrain(entity)
 	}
 }
 

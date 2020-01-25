@@ -21,7 +21,6 @@ class SimulationSpeedRegulator : WorldSimGame.InputProcessorProvider {
 		get() = if (paused.isPressed) 0f else baseMultiplier
 
 	var simulationDelta:Float = 0f
-		private set
 
 	private val faster = GameInput.function("Simulation faster", GameInput.Binding.bindKeyboard(Input.Keys.UP)).listen { times, pressed ->
 		if (pressed) {

@@ -9,5 +9,6 @@ val COMPONENT_DOMAIN = ComponentSet(
 		RenderC::class.java,
 		AgentC::class.java,
 		AgentSpeechC::class.java,
-		DecayC::class.java
+		DecayC::class.java,
+		IntelligentC::class.java
 		)

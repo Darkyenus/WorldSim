@@ -195,7 +195,7 @@ public final class GameInput implements InputProcessor {
 	}
 
 	private MouseTrigger mouseTrigger = null;
-	private int lastX = Gdx.input.getX(), lastY = Gdx.input.getY();
+	private int lastX = Gdx.input == null ? 0 : Gdx.input.getX(), lastY = Gdx.input == null ? 0 : Gdx.input.getY();
 
 	@Override
 	public boolean touchDragged(int screenX, int screenY, int pointer) {

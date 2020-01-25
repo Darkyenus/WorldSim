@@ -1,10 +1,12 @@
 package com.darkyen.worldSim
 
-import com.darkyen.worldSim.ai.AIContext
 import com.darkyen.worldSim.ai.brain
+import com.darkyen.worldSim.ai.loop
 import com.darkyen.worldSim.ecs.AGENT_ATTRIBUTES
+import com.darkyen.worldSim.ecs.AIContext
 import com.darkyen.worldSim.ecs.AgentC
 import com.darkyen.worldSim.ecs.ChunkPopulator
+import com.darkyen.worldSim.ecs.IntelligentC
 import com.darkyen.worldSim.ecs.MATURITY_AGE_YEAR
 import com.darkyen.worldSim.ecs.PositionC
 import com.darkyen.worldSim.ecs.RenderC
@@ -12,6 +14,7 @@ import com.darkyen.worldSim.ecs.World
 import com.darkyen.worldSim.ecs.atTile
 import com.darkyen.worldSim.util.Vec2
 import com.github.antag99.retinazer.Engine
+import kotlin.coroutines.coroutineContext
 import kotlin.math.max
 import kotlin.random.Random
 
@@ -32,9 +35,18 @@ object EntityChunkPopulator : ChunkPopulator {
 			48, 56, 59, 76, 69, 57, 58, 77
 	)
 
+	private val intelligentBrainC = IntelligentC {
+		with(coroutineContext[AIContext]!!) {
+			loop {
+				brain()
+			}
+		}
+	}
+
 	override fun populateChunk(engine: Engine, chunk: World.Chunk, chunkPos: Vec2) {
 		val positionC = engine.getMapper(PositionC::class.java)
 		val agentC = engine.getMapper(AgentC::class.java)
+		val intelligentC = engine.getMapper(IntelligentC::class.java)
 		val renderC = engine.getMapper(RenderC::class.java)
 
 		for (i in 0 until 50) {
@@ -50,7 +62,8 @@ object EntityChunkPopulator : ChunkPopulator {
 			val age = Random.nextInt(0, 70)
 
 			positionC.create(entity).pos = worldPos
-			agentC.add(entity, AgentC(AIContext::brain, genderMale).also {
+			intelligentC.add(entity, intelligentBrainC)
+			agentC.add(entity, AgentC(genderMale).also {
 				it.ageYears = age
 				for (attribute in AGENT_ATTRIBUTES) {
 					it.attributes[attribute.ordinal] = Random.nextInt(max(attribute.min.toInt(), 0), attribute.max + 1).toByte()
