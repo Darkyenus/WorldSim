@@ -372,11 +372,46 @@ suspend fun AIContext.gatherFoodFromEnvironment():Boolean {
 	return false
 }
 
+/** Check if a cognitive function should fail, due to lack of sleep, water, panic, etc. */
+fun AIContext.misfire():Boolean {
+	val attributes = attributes()
+	val health = 10 - attributes[AgentAttribute.HEALTH]
+	val food = -50 - attributes[AgentAttribute.HUNGER]
+	val water = -10 - attributes[AgentAttribute.THIRST]
+	val sleep = 20 - attributes[AgentAttribute.SLEEP]
+	val panic = 30 - (attributes[AgentAttribute.ALERTNESS] - attributes[AgentAttribute.MENTAL_STRENGTH])
+
+	val misfireChance = max(max(max(health, food), max(water, sleep)), panic)
+	if (misfireChance <= 0) {
+		return false
+	}
+	return misfireChance > Random.nextInt(100)
+}
+
+/** Check if the agent is getting uncomfortable and should re-evaluate life choices. */
+fun AIContext.isGettingUncomfortable():Boolean {
+	val attributes = attributes()
+	val thirst = attributes[AgentAttribute.THIRST]
+	val hunger = attributes[AgentAttribute.HUNGER]
+	val sleepiness = attributes[AgentAttribute.SLEEP]
+	return misfire() || thirst < 20 || hunger < 20 || sleepiness < 20
+}
+
 suspend fun AIContext.sleep() {
-	val sleepForPoints = max(AgentAttribute.SLEEP.max - agent.attributes[AgentAttribute.SLEEP], 10)
+	val attributes = attributes()
+	val sleepForPoints = max(AgentAttribute.SLEEP.max - attributes[AgentAttribute.SLEEP], 10)
+
 	for (i in 0 until sleepForPoints) {
 		delay(AgentActivity.SLEEPING, SLEEP_DURATION_MS_PER_POINT)
-		agent.attributes[AgentAttribute.SLEEP] = agent.attributes[AgentAttribute.SLEEP] + 1
+		val sleepAttr = attributes[AgentAttribute.SLEEP] + 1
+		attributes[AgentAttribute.SLEEP] = sleepAttr
+
+		val waterNeed = attributes[AgentAttribute.THIRST].toInt()
+		val foodNeed = attributes[AgentAttribute.HUNGER].toInt()
+		if ((waterNeed < 10 || foodNeed < 10) && (sleepAttr > -30)) {
+			// Can't sleep when really thirsty or hungry (and not super sleep deprived)
+			break
+		}
 	}
 }
 

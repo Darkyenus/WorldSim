@@ -35,21 +35,6 @@ class AgentC(val genderMale:Boolean) : Component {
 	fun attributePercent(attribute:AgentAttribute):Float {
 		return (attributes[attribute] - attribute.min) / (attribute.max - attribute.min).toFloat()
 	}
-
-	/** Check if a cognitive function should fail, due to lack of sleep, water, panic, etc. */
-	fun misfire():Boolean {
-		val health = 10 - attributes[AgentAttribute.HEALTH]
-		val food = -50 - attributes[AgentAttribute.HUNGER]
-		val water = -10 - attributes[AgentAttribute.THIRST]
-		val sleep = 20 - attributes[AgentAttribute.SLEEP]
-		val panic = 30 - (attributes[ALERTNESS] - attributes[AgentAttribute.MENTAL_STRENGTH])
-
-		val misfireChance = max(max(max(health, food), max(water, sleep)), panic)
-		if (misfireChance <= 0) {
-			return false
-		}
-		return misfireChance > Random.nextInt(100)
-	}
 }
 
 const val MEMORY_CAPACITY = 8

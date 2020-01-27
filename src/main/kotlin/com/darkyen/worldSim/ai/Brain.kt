@@ -19,10 +19,10 @@ import kotlin.math.max
 import kotlin.random.Random
 
 suspend fun AIContext.brain() {
-	if (!takeCareOfBasicNeeds(20)) {
+	if (!takeCareOfBasicNeeds(50)) {
 		// Not met, time to panic...
 		increaseAlert(10)
-		if (agent.misfire()) {
+		if (misfire()) {
 			// PANIC
 			panic()
 		}
@@ -42,27 +42,27 @@ private suspend fun AIContext.takeCareOfBasicNeeds(howMuch:Byte):Boolean {
 	val waterNeed = attributes[THIRST].toInt() - 30
 	val foodNeed = attributes[HUNGER].toInt() - 20
 	val sleepNeed = attributes[SLEEP].toInt()
-	val socialNeed = max(attributes[SOCIAL] + 50 - attributes[EXTROVERSION] / 2, 30)
+	val socialNeed = max(attributes[SOCIAL] + 50 - attributes[EXTROVERSION] / 2, 0)
 
 	if (waterNeed < howMuch && foodNeed < howMuch && sleepNeed < howMuch && socialNeed < howMuch) {
 		return true
 	}
 
-	class Need(val level:Int, val dealWithIt:AITask) : Comparable<Need> {
-		override fun compareTo(other: Need): Int = level.compareTo(other.level)
+	class Need(val level:Int, val weight:Int, val dealWithIt:AITask) : Comparable<Need> {
+		override fun compareTo(other: Need): Int = weight.compareTo(other.weight)
 	}
 	val needs = arrayOf(
-			Need(waterNeed, AIContext::seekWater),
-			Need(foodNeed, AIContext::seekFood),
-			Need(sleepNeed, AIContext::seekSleep),
-			Need(socialNeed, AIContext::seekSocial)
+			Need(waterNeed, waterNeed - 30, AIContext::seekWater),
+			Need(foodNeed, foodNeed - 20, AIContext::seekFood),
+			Need(sleepNeed, sleepNeed, AIContext::seekSleep),
+			Need(socialNeed, socialNeed + 50,AIContext::seekSocial)
 	)
 	needs.sort()
 
 	var success = true
 	for (need in needs) {
 		if (need.level > howMuch) {
-			break
+			continue
 		}
 		if (!need.dealWithIt.invoke(this)) {
 			success = false
@@ -160,6 +160,10 @@ private suspend fun AIContext.seek(seekable:Seekable, timeLimitMs:Long):Boolean 
 
 		// Check time limit
 		if (currentTimeMs > timeToStop) {
+			return false
+		}
+
+		if (isGettingUncomfortable()) {
 			return false
 		}
 
