@@ -1,12 +1,9 @@
 @file:BuildDependencyRepository("jitpack", "https://jitpack.io/")
-@file:BuildDependency("com.darkyen:ResourcePacker:2.5")
+@file:BuildDependency("com.darkyen:ResourcePacker:2.6")
 
 @file:Suppress("unused")
-import com.darkyen.resourcepacker.PackingOperation
 import org.jline.utils.OSUtils
 import wemi.*
-import wemi.Configurations
-import wemi.boot.BuildDependency
 import wemi.boot.BuildDependencyRepository
 import wemi.boot.WemiRootFolder
 import wemi.compile.KotlinCompilerFlags
@@ -43,7 +40,7 @@ val WorldSim by project {
 	libraryDependencies add { dependency("com.badlogicgames.gdx", "gdx", gdxVersion) }
 	libraryDependencies add { dependency("com.badlogicgames.gdx", "gdx-backend-lwjgl3", gdxVersion) }
 	libraryDependencies add { dependency("com.badlogicgames.gdx", "gdx-platform", gdxVersion, classifier = "natives-desktop") }
-	libraryDependencies add { dependency("com.darkyen", "retinazer", /*"retinazer-0.2.5"*/"master-SNAPSHOT") }
+	libraryDependencies add { dependency("com.darkyen", "retinazer", "c78e4ec9742c717ae8782e08dfa822fb1971ba3a") }
 	libraryDependencies add { dependency("com.badlogicgames.gdx:gdx-ai:1.8.2", exclusions = listOf(DependencyExclusion("com.badlogicgames.gdx", "gdx"))) }
 	libraryDependencies add { dependency("org.jetbrains.kotlinx", "kotlinx-coroutines-core", "1.3.3") }
 
@@ -52,7 +49,7 @@ val WorldSim by project {
 	packResources set {
 		val resources = (WemiRootFolder / "resources")
 		expiresWith(resources)
-		resourcePack(PackingOperation(resources.toFile(), assets.toFile()))
+		com.darkyen.resourcepacker.packResources(resources.toFile(), assets.toFile())
 		assets
 	}
 
